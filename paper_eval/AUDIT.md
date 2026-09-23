@@ -278,31 +278,56 @@ A tooth in a non-canonical image cannot be scored correct whatever the model
 predicts. On the 67-image subset the ceiling is 100% by construction, which is
 why `n` is printed beside every FDI figure.
 
-### 6.2 The split contains two disjoint annotation regimes
+### 6.2 The dataset contains two disjoint annotation regimes
 
-| | has anomaly labels | no anomaly labels |
-|---|---|---|
-| **has tooth labels** | 380 | 268 |
-| **no tooth labels** | 67 | 1 |
+This is a property of the **published dataset**, not of our split, and it
+belongs in the paper. Images were annotated either for *teeth* or for
+*anomalies*, essentially never for both.
 
-- The 380 anomaly-bearing images average **6.9** labelled teeth and **none** is
-  a full arch.
-- The 268 images without anomalies average **20.5** labelled teeth and contain
-  all 93 full arches.
-- **0 of the 67 FDI-evaluable images carry any anomaly label.**
+Contingency table over the 716-image test split:
 
-Fraction of labelled teeth overlapping an anomaly box (IoU > 0):
+|  | has anomaly labels | no anomaly labels | total |
+|---|---|---|---|
+| **has tooth labels** | 380 | 268 | 648 |
+| **no tooth labels** | 67 | 1 | 68 |
+| **total** | 447 | 269 | 716 |
 
-| group | images | teeth | overlapping | fraction |
+The two populations behave completely differently:
+
+- the 380 anomaly-bearing images average **6.9** labelled teeth, every one has
+  ≤ 10, and **not one is a complete arch**;
+- the 268 images without anomalies average **20.5** labelled teeth and contain
+  **all 93** full arches;
+- **0 of the 67 FDI-evaluable images carry any anomaly label**.
+
+Fraction of labelled teeth whose bounding box overlaps an anomaly box (IoU > 0):
+
+| group | images | labelled teeth | overlapping an anomaly | fraction |
 |---|---|---|---|---|
 | full-arch (32 labelled) | 93 | 2,976 | 0 | **0.0%** |
 | sparse (1–10 labelled) | 491 | 3,425 | 1,477 | **43.1%** |
 | mid (11–31 labelled) | 64 | 1,706 | 0 | 0.0% |
 
-Recall on sparse images is measured on a population where 43% of the labelled
-teeth are restored or diseased; recall on full-arch images on one where none
-are. They are not the same measurement and `ablation.csv` reports them in
-separate columns.
+The separation is total: every image with 11 or more labelled teeth has zero
+anomaly annotations.
+
+**Consequences for evaluation.** Recall on sparse images is measured on a
+population where 43% of the labelled teeth are restored or diseased; recall on
+full-arch images on one where none are. These are different measurements and
+must never be averaged or quoted as a single figure. Therefore:
+
+- recall, **central-zone recall** and **per-tooth recall** are computed on the
+  **93 full-arch images only** (`n = 93`, printed in every header). Those are
+  the paper's numbers.
+- sparse-image recall is reported under the explicit name
+  `recall_anomaly_bearing_teeth`, with its own `n`, and is excluded from
+  central-zone and per-tooth recall entirely.
+- the position-offset histogram uses **112** images — 67 full-arch canonical
+  plus 45 mid canonical-partial. Of the 50 canonical-partial images, 45 are mid
+  (1,206 tooth instances, **zero** anomaly annotations) and 5 are sparse (20
+  tooth instances, 3 of them carrying anomaly labels). The 5 are dropped: their
+  gaps are unannotated teeth, not absent ones, so an offset there would measure
+  annotation policy rather than the FDI anchoring flaw.
 
 ### 6.3 Anomaly evaluation is out of scope
 

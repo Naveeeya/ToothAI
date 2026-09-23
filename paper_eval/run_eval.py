@@ -183,8 +183,8 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
              limit=None, fix_cls_routing=False):
     """Run one configuration over the split and accumulate every metric."""
     acc = {
-        "recall_full": [], "recall_sparse": [],
-        "central_full": [], "central_sparse": [],
+        "recall_full": [], "recall_anom": [],
+        "central_full": [],
         "fdi_canonical": [], "fdi_fullarch": [],
         "jaw": [], "offsets": Counter(),
         "mask_ious": [], "pre_prune": [], "final": [], "pruned": 0,
@@ -220,11 +220,17 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
                 n_chit += int(central)
                 acc["mask_ious"].append(iou)
 
-        bucket = "full" if iid in manifests["full_arch"] else (
-            "sparse" if iid in manifests["sparse"] else None)
-        if bucket:
-            acc[f"recall_{bucket}"].append((n_hit, n_tot))
-            acc[f"central_{bucket}"].append((n_chit, n_ctot))
+        in_fa = iid in manifests["full_arch"]
+        if in_fa:
+            acc["recall_full"].append((n_hit, n_tot))
+            # Central-zone recall comes ONLY from full-arch images: it is the
+            # paper's core claim, and a complete arch is the only case where an
+            # absent label means an absent tooth rather than an unannotated one.
+            acc["central_full"].append((n_chit, n_ctot))
+        elif iid in manifests["sparse"]:
+            # anomaly-annotation regime -- reported separately, under its own
+            # name, and excluded from central-zone and per-tooth recall
+            acc["recall_anom"].append((n_hit, n_tot))
 
         # --- FDI / jaw / offset, only where the labels support it ----------
         in_canon = iid in manifests["canonical"]
@@ -244,10 +250,11 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
                 pred_jaw = "upper" if pf in K.FDI_UPPER else "lower"
                 jaw_tot += 1
                 jaw_hit += int(pred_jaw == jaw)
-                if pred_jaw == jaw and in_canon:
-                    # offsets only on canonical images: on the 26 scrambled
-                    # ones the "true" rank is meaningless, so an offset there
-                    # would measure label noise, not the anchoring flaw.
+                if pred_jaw == jaw and iid in manifests["offset_subset"]:
+                    # Canonical images only (on the 26 scrambled ones the
+                    # "true" rank is meaningless), and sparse ones dropped
+                    # (their gaps are unannotated teeth, not absent ones), so
+                    # an offset here really is the anchoring flaw.
                     seq = K.FDI_UPPER if jaw == "upper" else K.FDI_LOWER
                     acc["offsets"][seq.index(pf) - rank] += 1
             if in_canon:
@@ -257,12 +264,16 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
             if in_full:
                 acc["jaw"].append((jaw_hit, jaw_tot))
 
-        # --- per-position recall (detection only, all images) --------------
-        for gt, pred, iou in pairs:
-            _, _, true_fdi = class_map[gt["category_id"]]
-            acc["per_tooth"][true_fdi][1] += 1
-            if pred is not None:
-                acc["per_tooth"][true_fdi][0] += 1
+        # --- per-position recall: FULL-ARCH IMAGES ONLY (n = 93) ------------
+        # Same reasoning as central-zone recall: only on a complete arch does
+        # an absent label mean an absent tooth, so only there is a per-position
+        # denominator meaningful.
+        if in_fa:
+            for gt, pred, iou in pairs:
+                _, _, true_fdi = class_map[gt["category_id"]]
+                acc["per_tooth"][true_fdi][1] += 1
+                if pred is not None:
+                    acc["per_tooth"][true_fdi][0] += 1
 
         if n % 25 == 0:
             print(f"    {config}: {n}/{len(ids)}", flush=True)
@@ -368,10 +379,11 @@ def measure_latency(predictor, images, gt_teeth, config, warmup=10, n=200):
 def write_ablation(rows, extra_header=()):
     p = os.path.join(RESULTS, "ablation.csv")
     cols = ["config", "status", "reason",
-            "recall_fullarch", "recall_fullarch_lo", "recall_fullarch_hi",
-            "recall_sparse", "recall_sparse_lo", "recall_sparse_hi",
-            "central_recall_fullarch", "central_recall_fullarch_lo", "central_recall_fullarch_hi",
-            "central_recall_sparse", "central_recall_sparse_lo", "central_recall_sparse_hi",
+            "recall_fullarch", "recall_fullarch_lo", "recall_fullarch_hi", "recall_fullarch_n",
+            "recall_anomaly_bearing_teeth", "recall_anomaly_bearing_teeth_lo",
+            "recall_anomaly_bearing_teeth_hi", "recall_anomaly_bearing_teeth_n",
+            "central_recall_fullarch", "central_recall_fullarch_lo",
+            "central_recall_fullarch_hi", "central_recall_fullarch_n",
             "fdi_acc_canonical", "fdi_acc_canonical_lo", "fdi_acc_canonical_hi", "fdi_canonical_n",
             "fdi_acc_fullarch", "fdi_acc_fullarch_lo", "fdi_acc_fullarch_hi", "fdi_fullarch_n",
             "jaw_acc", "jaw_acc_lo", "jaw_acc_hi", "jaw_n",
@@ -393,8 +405,13 @@ def write_per_tooth(per_tooth_by_config):
     p = os.path.join(RESULTS, "per_tooth_recall.csv")
     with open(p, "w", newline="") as fh:
         for line in K.provenance_header([
+                "SUBSET: the 93 FULL-ARCH images only (n = 93)",
+                "  Only on a complete arch does an absent label mean an absent",
+                "  tooth. Sparse images (1-10 labels) belong to the anomaly-",
+                "  annotation regime and are EXCLUDED from this file entirely.",
                 "config 'ensemble' is the 'full' two-pass system",
-                "support = ground-truth instances of that FDI position in the split",
+                "support = ground-truth instances of that FDI position across",
+                "  those 93 images (max 93 per position)",
                 "recall = detected at mask IoU >= 0.5 (detection, not numbering)"]):
             fh.write(line + "\n")
         w = csv.writer(fh)
@@ -432,7 +449,11 @@ def write_offsets(offsets_by_config):
     with open(p, "w", newline="") as fh:
         for line in K.provenance_header([
                 "offset = predicted index in FDI_UPPER/FDI_LOWER minus true index",
-                "restricted to teeth placed in the CORRECT jaw, canonical images only",
+                "restricted to teeth placed in the CORRECT jaw",
+                "SUBSET: 112 images = 67 full-arch canonical + 45 mid canonical-partial.",
+                "  The 5 sparse canonical-partial images are excluded: their gaps are",
+                "  unannotated teeth, not absent ones, so an offset there would measure",
+                "  annotation policy rather than the anchoring flaw.",
                 "sort_and_assign_fdi always labels the leftmost detection 18/48 and",
                 "its gap check never runs before the first tooth (app.py:126-135),",
                 "so a missing third molar shifts the whole jaw by one."]):
@@ -446,11 +467,13 @@ def write_offsets(offsets_by_config):
 
 
 def summarise(rows):
-    print("\n" + "=" * 100)
+    print("\n" + "=" * 118)
     print("ABLATION SUMMARY")
-    print("=" * 100)
-    hdr = f"{'config':<18} {'recall(FA)':>18} {'recall(sp)':>18} {'FDI(canon)':>18} {'teeth/img':>11} {'lat med':>9}"
-    print(hdr); print("-" * 100)
+    print("=" * 118)
+    print("(bootstrap 95% CI in brackets; 10,000 resamples over images)")
+    hdr = (f"{'config':<18} {'recall(full-arch)':>19} {'recall(anom-bear)':>19} "
+           f"{'central(FA)':>19} {'FDI(canon)':>19} {'teeth/img':>10} {'lat':>8}")
+    print(hdr); print("-" * 118)
     for r in rows:
         if r.get("status") != "ok":
             print(f"{r['config']:<18} {'-- not run --':>18}  {r.get('reason','')[:52]}")
@@ -459,14 +482,22 @@ def summarise(rows):
             v, lo, hi = r.get(k), r.get(k + "_lo"), r.get(k + "_hi")
             return f"{v:.3f} [{lo:.3f},{hi:.3f}]" if isinstance(v, float) and v == v else "n/a"
         lat = r.get("latency_median_s")
-        print(f"{r['config']:<18} {ci('recall_fullarch'):>18} {ci('recall_sparse'):>18} "
-              f"{ci('fdi_acc_canonical'):>18} "
-              f"{r.get('teeth_per_image_preprune', float('nan')):>11.1f} "
-              f"{(f'{lat:.3f}s' if lat else 'n/a'):>9}")
+        print(f"{r['config']:<18} {ci('recall_fullarch'):>19} "
+              f"{ci('recall_anomaly_bearing_teeth'):>19} "
+              f"{ci('central_recall_fullarch'):>19} {ci('fdi_acc_canonical'):>19} "
+              f"{r.get('teeth_per_image_preprune', float('nan')):>10.1f} "
+              f"{(f'{lat:.2f}s' if lat else 'n/a'):>8}")
     print("=" * 100)
-    print("recall(FA) = full-arch images; recall(sp) = sparse images. They are NOT")
-    print("comparable: 43.1% of sparse labelled teeth carry an anomaly, vs 0.0% of")
-    print("full-arch ones. teeth/img is the PRE-PRUNE count (post DIoU-NMS).")
+    print("recall(full-arch)   n = 93 images, complete arches. THE paper number:")
+    print("                    an absent label there means an absent tooth.")
+    print("recall(anom-bear)   n = 491 sparse images from the ANOMALY-annotation")
+    print("                    regime. 43.1% of their labelled teeth carry an")
+    print("                    anomaly annotation; the full-arch set has 0.0%.")
+    print("                    The two are NOT comparable and must never be")
+    print("                    averaged or quoted as one recall figure.")
+    print("central(FA)         central-zone recall, full-arch images only (n = 93).")
+    print("teeth/img           PRE-PRUNE count (post DIoU-NMS, before the 32-cap),")
+    print("                    the only over-detection measure valid on sparse GT.")
 
 
 def main():
@@ -515,14 +546,16 @@ def main():
                        limit=limit, fix_cls_routing=args.fix_cls_routing)
         r = {"config": cfg, "status": "ok", "reason": ""}
         for key, src in (("recall_fullarch", "recall_full"),
-                         ("recall_sparse", "recall_sparse"),
+                         ("recall_anomaly_bearing_teeth", "recall_anom"),
                          ("central_recall_fullarch", "central_full"),
-                         ("central_recall_sparse", "central_sparse"),
                          ("fdi_acc_canonical", "fdi_canonical"),
                          ("fdi_acc_fullarch", "fdi_fullarch"),
                          ("jaw_acc", "jaw")):
             v, lo, hi = K.bootstrap_ci(acc[src])
             r[key], r[key + "_lo"], r[key + "_hi"] = v, lo, hi
+        r["recall_fullarch_n"] = len(acc["recall_full"])
+        r["recall_anomaly_bearing_teeth_n"] = len(acc["recall_anom"])
+        r["central_recall_fullarch_n"] = len(acc["central_full"])
         r["fdi_canonical_n"] = len(acc["fdi_canonical"])
         r["fdi_fullarch_n"] = len(acc["fdi_fullarch"])
         r["jaw_n"] = len(acc["jaw"])

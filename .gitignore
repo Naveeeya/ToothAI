@@ -60,6 +60,7 @@ dist/
 # === JUPYTER ===
 .ipynb_checkpoints/
 *.ipynb
+!paper_eval/kaggle/*.ipynb
 
 # === ANNOTATIONS BACKUP ===
 *_annotations.coco.json.bak

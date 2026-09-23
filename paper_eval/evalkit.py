@@ -132,6 +132,7 @@ def load_manifests():
     full_arch = {i for i, r in rows.items() if r["full_arch"] == "1"}
     canonical = {i for i, r in rows.items() if r["canonical_mapping"] == "1"}
     sparse = {i for i, r in rows.items() if 1 <= int(r["labeled_teeth"]) <= 10}
+    mid = {i for i, r in rows.items() if 11 <= int(r["labeled_teeth"]) <= 31}
     return {
         "all": set(rows),
         # FDI accuracy headline: consistent labels, includes missing teeth
@@ -140,8 +141,18 @@ def load_manifests():
         "fdi_evaluable": canonical & full_arch,
         # jaw membership is reliable on every full-arch image (Check 1)
         "full_arch": full_arch,
-        # sparse labelling is concentrated on abnormal teeth -> report apart
+        # Sparse images belong to the ANOMALY-annotation regime: 43.1% of their
+        # labelled teeth carry an anomaly box, vs 0.0% of full-arch ones, and
+        # none of them is a complete arch. Recall there measures something
+        # different, so it is reported under its own name and excluded from
+        # central-zone recall and per-tooth recall entirely.
         "sparse": sparse,
+        "mid": mid,
+        # Offset histogram: canonical images whose gaps are genuinely missing
+        # teeth. The 5 canonical-partial images in the sparse group are dropped
+        # -- their gaps are unannotated teeth, not absent ones, so an offset
+        # there would measure annotation policy, not the anchoring flaw.
+        "offset_subset": canonical & (full_arch | mid),
         "rows": rows,
     }
 

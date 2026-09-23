@@ -155,9 +155,15 @@ def main():
         for r in csv.DictReader(l for l in fh if not l.startswith("#")):
             quality[int(r["image_id"])] = r
 
+    # MID-group canonical-partial images only (11-31 labelled teeth).
+    # The 5 sparse canonical-partial images (1-10 labels) belong to the
+    # anomaly-annotation regime: their gaps are unannotated teeth, not absent
+    # ones, so they answer the reviewer's question by construction and would
+    # only muddy a clinical review set. All 45 mid images carry zero anomaly
+    # annotations, so their gaps are genuinely open questions.
     pool = [iid for iid, r in quality.items()
             if r["canonical_mapping"] == "1" and r["full_arch"] != "1"
-            and int(r["labeled_teeth"]) > 0]
+            and 11 <= int(r["labeled_teeth"]) <= 31]
     # Spread the sample across "how many teeth are unlabelled", so the reviewer
     # sees both near-complete and heavily-sparse cases. Deterministic: sorted.
     pool.sort(key=lambda i: (-int(quality[i]["labeled_teeth"]), i))
@@ -192,7 +198,10 @@ def main():
         f"<p>Split: <code>data/final-di-stratified/test</code> &middot; "
         f"{len(images)} images &middot; git <code>{git_state()}</code></p>",
         "<p>All images below have labels consistent with the standard "
-        "position mapping, and an incomplete arch.</p>",
+        "position mapping, an incomplete arch, and <b>no anomaly annotations "
+        "at all</b> &mdash; so an unlabelled position is a genuine open "
+        "question rather than a known side-effect of anomaly-only "
+        "annotation.</p>",
         "<table><tr><th>image_id</th><th>labelled</th><th>unlabelled</th>"
         "<th>panel</th><th>file</th></tr>",
     ]

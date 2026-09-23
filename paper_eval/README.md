@@ -73,12 +73,15 @@ git state, GPU name and seed.
 
 ## Which images each metric uses, and why
 
-| metric | subset | reason |
-|---|---|---|
-| recall | full-arch (93) and sparse (≤10) **separately** | 43.1% of sparse labelled teeth overlap an anomaly box, vs 0.0% of full-arch ones — they are not the same measurement |
-| FDI accuracy | 117 canonical (headline) and 67 full-arch canonical (clean-label bound) | the 117 include missing teeth, which is what real patients have; the 67 have a 100% label ceiling |
-| jaw accuracy | all 93 full-arch | jaw membership is consistent in every full-arch image, including the 26 whose within-jaw ordering is scrambled |
-| position offset | 117 canonical | includes 50 partial arches, the only images where a missing third molar can shift the jaw |
+| metric | subset | n | reason |
+|---|---|---|---|
+| **recall** | full-arch | **93** | the paper number: only on a complete arch does an absent label mean an absent tooth |
+| **central-zone recall** | full-arch | **93** | same; sparse images excluded entirely |
+| **per-tooth recall** | full-arch | **93** | same; sparse images excluded entirely |
+| `recall_anomaly_bearing_teeth` | sparse (1–10 labels) | 491 | the anomaly-annotation regime. 43.1% of its labelled teeth carry an anomaly box vs 0.0% of full-arch. Reported under its own name; never comparable to the above |
+| FDI accuracy | canonical / full-arch canonical | 117 / 67 | the 117 include missing teeth, which is what real patients have; the 67 have a 100% label ceiling |
+| jaw accuracy | all full-arch | 93 | jaw membership is consistent in every full-arch image, including the 26 whose within-jaw ordering is scrambled |
+| position offset | canonical, sparse dropped | **112** | 67 full-arch + 45 mid canonical-partial. The 5 sparse canonical-partial images are excluded: their gaps are unannotated teeth, not absent ones |
 
 ## Not run, and why
 
