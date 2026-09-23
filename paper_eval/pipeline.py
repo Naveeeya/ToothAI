@@ -29,11 +29,13 @@ process_predictions carries the class-routing bug at app.py:953-958 verbatim,
 but routes it through _is_tooth() so it can be switched. Nothing else differs.
 See _is_tooth for the original six lines quoted exactly.
 """
+import cv2
 import numpy as np
 
-# Detectron2 / torch are imported lazily inside the functions that need them,
-# exactly as app.py does, so this module can be imported on a machine with
-# neither installed (e.g. to read the constants or run unit tests).
+# cv2 and numpy are module-level here because app.py imports them at module
+# scope too (app.py:14-15) and the copied bodies reference them as globals.
+# torch and detectron2.structures stay lazy -- app.py imports those inside the
+# functions that use them, so the copies do the same.
 
 
 

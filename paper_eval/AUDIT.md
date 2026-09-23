@@ -148,8 +148,28 @@ jaw `18` (or `48`) unconditionally, then walks right. Its gap-detection check
 is guarded by `if i > 0` (`app.py:135`), so it runs only *between* consecutive
 teeth — never before the first one. A missing third molar, common in adults, shifts the entire jaw by
 one position. `results/position_offsets.csv` is the histogram of exactly this,
-computed on the 117 canonical images because those include 50 partial arches
-where the shift can actually occur.
+computed on 112 images (67 full-arch canonical + 45 mid canonical-partial),
+which include partial arches where the shift can actually occur.
+
+A second, sharper failure mode sits in the same function. When more than 16
+detections land in one jaw, `fdi_index` runs past the end of the 16-element
+sequence and every surplus tooth is assigned the **same** final FDI number:
+
+```python
+if fdi_index < len(fdi_sequence):
+    fdi_number = fdi_sequence[fdi_index]
+else:
+    fdi_number = fdi_sequence[-1]  # Fallback to last   (app.py:151-153)
+```
+
+So over-detection in one jaw collapses the excess onto FDI 28 (upper) or 38
+(lower). `resolve_fdi_conflicts` then sees a large duplicate group and either
+reassigns the losers to arbitrary free slots in that quadrant or discards them
+outright (`app.py:721-732`). Because the median jaw split forces an even
+division, a surplus in one jaw is not a rare event. This is one reason the
+harness reports the **pre-prune** detection count: by the time the final teeth
+list is produced, the evidence of over-detection has been rewritten into
+plausible-looking FDI numbers.
 
 ### 5.3 The class-routing bug at `app.py:953-958`
 

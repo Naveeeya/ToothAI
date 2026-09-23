@@ -9,7 +9,8 @@
   "enable_tpu": false,
   "enable_internet": true,
   "dataset_sources": [
-    "alphaleporus/tooth-ai-paper-eval"
+    "alphaleporus/tooth-ai-paper-eval",
+    "alphaleporus/tooth-ai-paper-eval-code"
   ],
   "competition_sources": [],
   "kernel_sources": [],

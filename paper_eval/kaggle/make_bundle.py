@@ -20,6 +20,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 BUNDLE = os.path.join(ROOT, "paper_eval", "kaggle", "bundle")
+CODE_BUNDLE = os.path.join(ROOT, "paper_eval", "kaggle", "bundle_code")
 
 SPLIT_DIR = os.path.join(ROOT, "data", "final-di-stratified", "test")
 MODELS = ["output/resnet50_9class_20k",
@@ -46,10 +47,59 @@ def sha256(p, chunk=1 << 20):
     return h.hexdigest()
 
 
+def build_code_bundle():
+    """Code-only dataset: paper_eval/ and its Task B outputs, nothing else."""
+    if os.path.exists(CODE_BUNDLE):
+        shutil.rmtree(CODE_BUNDLE)
+    total = n = 0
+    for f in CODE + ["check_imports.py", "AUDIT.md"]:
+        src = os.path.join(ROOT, "paper_eval", f)
+        if not os.path.exists(src):
+            continue
+        dst = os.path.join(CODE_BUNDLE, "paper_eval", f)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(src, dst); total += os.path.getsize(src); n += 1
+    for sub in ("results/class_to_position.csv", "results/label_quality.csv",
+                "results/instance_counts.csv", "manifests/fdi_evaluable.txt"):
+        src = os.path.join(ROOT, "paper_eval", sub)
+        if not os.path.exists(src):
+            continue
+        dst = os.path.join(CODE_BUNDLE, "paper_eval", sub)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(src, dst); total += os.path.getsize(src); n += 1
+
+    meta = {"title": "Tooth-AI paper eval code",
+            "id": "alphaleporus/tooth-ai-paper-eval-code",
+            "licenses": [{"name": "other"}], "isPrivate": True}
+    json.dump(meta, open(os.path.join(CODE_BUNDLE, "dataset-metadata.json"), "w"),
+              indent=2)
+
+    # Sweep AFTER every write: the exFAT volume creates a "._<name>" sidecar
+    # for each file as it lands, including dataset-metadata.json itself.
+    swept = 0
+    for root, dirs, files in os.walk(CODE_BUNDLE):
+        for f in files:
+            if f.startswith("._"):
+                os.remove(os.path.join(root, f)); swept += 1
+    print(f"code bundle at {CODE_BUNDLE}")
+    print(f"  {n} files, {human(total)}" + (f", swept {swept} sidecars" if swept else ""))
+    print("\n  --dir-mode zip is REQUIRED or the paper_eval/ folder is skipped.")
+    print("  first time :  kaggle datasets create  -p paper_eval/kaggle/bundle_code --dir-mode zip -t")
+    print("  thereafter :  kaggle datasets version -p paper_eval/kaggle/bundle_code --dir-mode zip -t -m '<msg>'")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--code-only", action="store_true",
+                    help="build only the ~200 KB paper_eval/ bundle. The data "
+                         "and checkpoints never change, so iterating on the "
+                         "harness should not re-upload 1.7 GB each time.")
     args = ap.parse_args()
+
+    if args.code_only:
+        build_code_bundle()
+        return
 
     coco = os.path.join(SPLIT_DIR, "_annotations.coco.json")
     if not os.path.exists(coco):

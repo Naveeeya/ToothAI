@@ -3,11 +3,33 @@
 Everything here needs a GPU. The Mac this repo lives on is an Apple M1 with no
 CUDA and no torch/Detectron2, so nothing in Task D or E can run locally.
 
-## 1. Build the bundle (on the Mac)
+## 0. Check before you push
 
 ```bash
-python3 paper_eval/kaggle/make_bundle.py --dry-run   # check the size first
-python3 paper_eval/kaggle/make_bundle.py
+python3 paper_eval/check_imports.py
+```
+
+The GPU half cannot be imported on this Mac (no torch, Detectron2, cv2 or
+numpy), so a missing module-level import is invisible locally and only shows
+up minutes into a paid GPU session. This walks the AST instead. It is how the
+`cv2` import missing from `pipeline.py` was found — after it had already cost
+one Kaggle run.
+
+## 1. Build the bundles (on the Mac)
+
+There are **two** datasets on purpose:
+
+| dataset | size | contents | changes |
+|---|---|---|---|
+| `tooth-ai-paper-eval` | ~2 GB | `data/test/`, `output/<model>/` | never |
+| `tooth-ai-paper-eval-code` | ~200 KB | `paper_eval/` | every fix |
+
+Splitting them makes a harness fix a **2-second** upload instead of 14 minutes.
+
+```bash
+python3 paper_eval/kaggle/make_bundle.py --dry-run     # size check
+python3 paper_eval/kaggle/make_bundle.py               # the big one, once
+python3 paper_eval/kaggle/make_bundle.py --code-only   # the small one
 ```
 
 Produces `paper_eval/kaggle/bundle/` — about **1.7 GB**, 735 files:
@@ -23,8 +45,19 @@ No training data is included.
 ## 2. Create the Kaggle Dataset — **private**
 
 ```bash
+# big dataset, once
 kaggle datasets create -p paper_eval/kaggle/bundle --dir-mode zip -t
+
+# code dataset, once
+kaggle datasets create -p paper_eval/kaggle/bundle_code --dir-mode zip -t
+
+# code dataset, every time the harness changes
+python3 paper_eval/kaggle/make_bundle.py --code-only
+kaggle datasets version -p paper_eval/kaggle/bundle_code --dir-mode zip -t -m "what changed"
 ```
+
+`--dir-mode zip` is **required**. Without it the CLI prints
+`Skipping folder: paper_eval` and uploads nothing but the metadata.
 
 `-t` / `--keep-tabular` matters: without it Kaggle converts tabular files to
 CSV, which would rewrite the COCO annotation JSON and the result CSVs. They
@@ -61,13 +94,20 @@ outside the project.
   "is_private": true,
   "enable_gpu": true,
   "enable_internet": true,
-  "dataset_sources": ["<username>/<dataset-slug>"],
+  "dataset_sources": ["<username>/tooth-ai-paper-eval",
+                      "<username>/tooth-ai-paper-eval-code"],
   "competition_sources": [],
   "kernel_sources": []
 }
 ```
 
 `enable_internet` is required — Detectron2 is built from source at run time.
+
+The kernel `id` must **not** equal a dataset slug in the same namespace, or
+`SaveKernel` returns `409 Conflict`. Hence `tooth-ai-paper-eval-run`.
+
+`machine_shape` does not exist in CLI 2.2.x. Accelerator is a push flag:
+`--accelerator nvidiaTeslaT4`.
 
 ```bash
 kaggle kernels push -p paper_eval/kaggle
