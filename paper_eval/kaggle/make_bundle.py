@@ -59,6 +59,12 @@ def main():
     plan, total = [], 0
     plan.append((coco, "data/test/_annotations.coco.json"))
     for fn in imgs:
+        # Skip macOS AppleDouble sidecars. This repo lives on an exFAT volume,
+        # which materialises a "._<name>" file next to anything carrying
+        # extended attributes. They are pure noise in the bundle, and "._x.jpg"
+        # matches a *.jpg glob, so they can inflate an image count downstream.
+        if fn.startswith("._"):
+            continue
         src = os.path.join(SPLIT_DIR, fn)
         if os.path.exists(src):
             plan.append((src, f"data/test/{fn}"))
@@ -101,6 +107,17 @@ def main():
         d = os.path.join(BUNDLE, dst)
         os.makedirs(os.path.dirname(d), exist_ok=True)
         shutil.copy2(src, d)
+
+    # copy2 preserves xattrs, which makes the exFAT volume create a fresh
+    # "._<name>" sidecar beside every file it just wrote. Sweep them.
+    swept = 0
+    for root, dirs, files in os.walk(BUNDLE):
+        for f in files:
+            if f.startswith("._"):
+                os.remove(os.path.join(root, f))
+                swept += 1
+    if swept:
+        print(f"  swept {swept} AppleDouble sidecars from the bundle")
 
     manifest = {"files": len(plan), "bytes": total, "checkpoints": {}}
     for md in MODELS:

@@ -1,0 +1,17 @@
+{
+  "id": "alphaleporus/tooth-ai-paper-eval-run",
+  "title": "Tooth-AI paper eval run",
+  "code_file": "run_eval.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "alphaleporus/tooth-ai-paper-eval"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

@@ -23,8 +23,21 @@ No training data is included.
 ## 2. Create the Kaggle Dataset — **private**
 
 ```bash
-kaggle datasets create -p paper_eval/kaggle/bundle --dir-mode zip
+kaggle datasets create -p paper_eval/kaggle/bundle --dir-mode zip -t
 ```
+
+`-t` / `--keep-tabular` matters: without it Kaggle converts tabular files to
+CSV, which would rewrite the COCO annotation JSON and the result CSVs. They
+must stay byte-exact.
+
+Privacy is the **default** for `datasets create` in CLI 2.2.x — `--public` is
+opt-in. Do not pass it. `dataset-metadata.json` also sets `"isPrivate": true`
+and `make_bundle.py` asserts it.
+
+Processing is asynchronous: after the upload returns, Kaggle unpacks and
+indexes the dataset, and `kaggle datasets files <slug>` returns 403 until that
+finishes. For a ~2 GB bundle allow 10-30 minutes before the kernel can attach
+it.
 
 The source data is CC BY-NC and these are **medical radiographs**. The dataset
 must be private, permanently. Do not make it public and do not share the slug
