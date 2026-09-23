@@ -1,0 +1,52 @@
+# Keep graphify to source code only.
+# The repo holds thousands of radiographs; graphify's multimodal extraction
+# would push every one through the model API. Exclude all binary/media assets.
+
+# === DATASETS (thousands of OPG radiographs + COCO JSON) ===
+data/
+workspace/**/datasets/
+workspace/sample_vis/
+workspace/tooth-detection/
+workspace/tooth-ai/
+
+# === TRAINING OUTPUT (checkpoints, tfevents, predictions) ===
+output/
+wandb/
+
+# === MODEL WEIGHTS / BINARY ARTIFACTS ===
+*.pth
+*.pkl
+*.pt
+*.onnx
+*.npy
+*.npz
+events.out.tfevents.*
+
+# === IMAGES (multimodal extraction would bill every one) ===
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.svg
+*.ico
+
+# === OTHER MULTIMODAL-ELIGIBLE DOCS ===
+*.pdf
+*.mp4
+*.mov
+
+# === ENVIRONMENTS / CACHES ===
+venv/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+graphify-out/
+
+# === MACOS CRUFT (AppleDouble sidecars on this exFAT volume) ===
+.DS_Store
+._*

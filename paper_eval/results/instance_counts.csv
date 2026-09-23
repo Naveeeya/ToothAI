@@ -1,0 +1,48 @@
+# Tooth-AI paper_eval -- Task B (label quality)
+# split: data/final-di-stratified/test/_annotations.coco.json
+# source: ground-truth COCO annotations only; no model was run
+# git: 6b58c6462b9760238e9063731424bc3421561986+dirty-unknown(git-lfs missing)
+# generator: paper_eval/label_quality.py
+# kind: tooth (classes 1-32) or anomaly (classes 33-40); class 0 't' is an unused supercategory
+class_id,class_name,kind,instances,images_present
+0,t,unused,0,0
+1,1,tooth,439,439
+2,2,tooth,145,145
+3,3,tooth,135,135
+4,4,tooth,150,150
+5,5,tooth,150,150
+6,6,tooth,153,153
+7,7,tooth,639,638
+8,8,tooth,455,454
+9,9,tooth,575,574
+10,10,tooth,640,636
+11,11,tooth,148,148
+12,12,tooth,631,630
+13,13,tooth,156,156
+14,14,tooth,152,152
+15,15,tooth,149,149
+16,16,tooth,150,150
+17,17,tooth,136,136
+18,18,tooth,144,144
+19,19,tooth,142,142
+20,20,tooth,146,146
+21,21,tooth,151,151
+22,22,tooth,147,147
+23,23,tooth,150,150
+24,24,tooth,146,146
+25,25,tooth,632,630
+26,26,tooth,591,589
+27,27,tooth,143,143
+28,28,tooth,141,141
+29,29,tooth,147,147
+30,30,tooth,148,148
+31,31,tooth,137,137
+32,32,tooth,139,139
+33,Caries,anomaly,385,60
+34,Crown,anomaly,101,24
+35,Filling,anomaly,2504,438
+36,Implant,anomaly,10,4
+37,Prefabricated metal post,anomaly,65,26
+38,Retained root,anomaly,44,14
+39,Root canal filling,anomaly,323,159
+40,Root canal obturation,anomaly,286,51

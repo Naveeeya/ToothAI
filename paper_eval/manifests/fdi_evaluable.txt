@@ -1,0 +1,74 @@
+# Tooth-AI paper_eval -- Task B (label quality)
+# split: data/final-di-stratified/test/_annotations.coco.json
+# source: ground-truth COCO annotations only; no model was run
+# git: 6b58c6462b9760238e9063731424bc3421561986+dirty-unknown(git-lfs missing)
+# generator: paper_eval/label_quality.py
+# image ids on which FDI accuracy may be computed: full arch AND canonical mapping
+# one image id per line
+1
+5
+18
+32
+43
+49
+74
+85
+91
+95
+97
+102
+110
+130
+143
+158
+162
+164
+173
+183
+198
+203
+206
+236
+249
+266
+274
+280
+295
+305
+313
+320
+333
+335
+349
+354
+362
+379
+380
+383
+390
+400
+405
+423
+448
+450
+490
+491
+518
+534
+536
+544
+545
+565
+571
+589
+634
+641
+650
+665
+666
+670
+672
+674
+688
+694
+699

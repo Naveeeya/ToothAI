@@ -1,0 +1,42 @@
+# Tooth-AI paper_eval -- Task B (label quality)
+# split: data/final-di-stratified/test/_annotations.coco.json
+# source: ground-truth COCO annotations only; no model was run
+# git: 6b58c6462b9760238e9063731424bc3421561986+dirty-unknown(git-lfs missing)
+# generator: paper_eval/label_quality.py
+# derived from 93 full-arch images (all 32 classes present once)
+# jaw assigned by y-median split, matching app.py:82-104
+# fdi read off FDI_UPPER/FDI_LOWER in app.py:57-58 at the modal rank
+# agreement = fraction of full-arch images giving this class this rank
+class_id,jaw,position_rank,fdi,support_images,total_images,agreement
+1,upper,0,18,68,93,0.7312
+4,upper,1,17,67,93,0.7204
+16,upper,2,16,68,93,0.7312
+20,upper,3,15,68,93,0.7312
+21,upper,4,14,68,93,0.7312
+22,upper,5,13,68,93,0.7312
+24,upper,6,12,68,93,0.7312
+25,upper,7,11,68,93,0.7312
+26,upper,8,21,68,93,0.7312
+12,upper,9,22,68,93,0.7312
+23,upper,10,23,68,93,0.7312
+27,upper,11,24,68,93,0.7312
+28,upper,12,25,68,93,0.7312
+29,upper,13,26,68,93,0.7312
+30,upper,14,27,68,93,0.7312
+31,upper,15,28,68,93,0.7312
+19,lower,0,48,93,93,1.0000
+18,lower,1,47,93,93,1.0000
+17,lower,2,46,88,93,0.9462
+15,lower,3,45,68,93,0.7312
+14,lower,4,44,68,93,0.7312
+13,lower,5,43,68,93,0.7312
+11,lower,6,42,68,93,0.7312
+10,lower,7,41,68,93,0.7312
+9,lower,8,31,68,93,0.7312
+8,lower,9,32,68,93,0.7312
+7,lower,10,33,68,93,0.7312
+6,lower,11,34,85,93,0.9140
+5,lower,12,35,68,93,0.7312
+3,lower,13,36,68,93,0.7312
+2,lower,14,37,68,93,0.7312
+32,lower,15,38,68,93,0.7312
