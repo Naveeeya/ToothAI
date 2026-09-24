@@ -193,9 +193,42 @@ jaw split, FDI assignment, recursive pruning and FDI conflict resolution. The
 9-class model, so in practice every reported anomaly comes from the 41-class
 hybrid model alone.
 
-The harness carries the bug verbatim by default and corrects it under
-`--fix-cls-routing`, so both numbers exist. The paper reports the fixed numbers
-and discloses the bug.
+**Measured, not inferred.** `run_eval.py --routing-ab` runs the teeth pipeline
+both ways on images sampled from the 380 that carry anomaly labels — the bug
+cannot fire where the 9-class model finds no anomaly, and all 93 full-arch
+images have zero anomaly annotations, so the question is unanswerable on them.
+On a Tesla T4, kernel v4:
+
+| image_id | GT teeth / anomalies | teeth reported, deployed | teeth reported, corrected |
+|---|---|---|---|
+| 2 | 6 / 2 | **15** | 6 |
+| 150 | 8 / 4 | **25** | 16 |
+| 288 | 5 / 5 | **12** | 6 |
+| 436 | 6 / 4 | **12** | 6 |
+| 582 | 7 / 10 | **28** | 23 |
+
+The teeth lists differ on **5 of 5** images. The surplus detections are the
+anomalies themselves: on image 288 the six phantom teeth carry scores 0.98,
+0.94, 0.99, 0.98, 0.74 and 0.34 — high-confidence fillings and crowns entering
+the teeth list, being assigned FDI numbers, and being reported to the clinician
+as teeth. In the worst case the deployed system reports **2.5x** the teeth the
+corrected one does.
+
+This is a clinical defect, not only a metrics artifact: the tooth count is
+inflated roughly in proportion to how much restorative work the patient has
+had. A mouth with many fillings is reported as having many more teeth than it
+does.
+
+Two cautions on reading that table. The corrected count is **not** validated by
+matching the GT count — these images label only 5–8 of the ~28–32 teeth
+present, so a corrected count of 6 may equally reflect severe under-detection.
+The A/B establishes the bug's effect, not either version's correctness. And the
+sample is 5 images; the full-run `full_fix_routing` row is the number to quote.
+
+The harness carries the bug verbatim by default and corrects it in the
+`full_fix_routing` configuration, which appears as its own row in
+`ablation.csv` so the deployed and corrected numbers sit side by side. The
+paper reports the corrected numbers and discloses the bug.
 
 ### 5.4 There is no 1024×512 resize
 

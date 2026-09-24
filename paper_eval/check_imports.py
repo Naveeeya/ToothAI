@@ -83,6 +83,54 @@ def check(path):
     return sorted(problems)
 
 
+def module_exports(path):
+    """Every top-level name a module defines."""
+    t = ast.parse(open(path).read())
+    names = set()
+    for n in t.body:
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            names.add(n.name)
+        elif isinstance(n, (ast.Assign, ast.AnnAssign)):
+            targets = n.targets if isinstance(n, ast.Assign) else [n.target]
+            for tgt in targets:                 # walk: tuple targets count too
+                for y in ast.walk(tgt):
+                    if isinstance(y, ast.Name):
+                        names.add(y.id)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            for a in n.names:
+                names.add((a.asname or a.name).split(".")[0])
+    return names
+
+
+def check_cross_module(here):
+    """Verify every K.<name> / P.<name> the harness calls actually exists.
+
+    The undefined-name pass cannot see these: `K.gt_masks_for` is an attribute
+    access on an imported module, not a bare name. A patch that renamed a
+    helper in evalkit.py while leaving the caller intact shipped exactly that
+    bug, and it would have surfaced as an AttributeError on Kaggle.
+    """
+    alias = {"K": "evalkit", "P": "pipeline"}
+    exports = {}
+    for mod in set(alias.values()):
+        path = os.path.join(here, mod + ".py")
+        if os.path.exists(path):
+            exports[mod] = module_exports(path)
+    bad = []
+    for caller in ("run_eval.py", "export_panels.py"):
+        path = os.path.join(here, caller)
+        if not os.path.exists(path):
+            continue
+        tree = ast.parse(open(path).read())
+        for n in ast.walk(tree):
+            if (isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name)
+                    and n.value.id in alias):
+                mod = alias[n.value.id]
+                if mod in exports and n.attr not in exports[mod]:
+                    bad.append((caller, n.lineno, f"{n.value.id}.{n.attr}", mod))
+    return bad
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     targets = sys.argv[1:] or [os.path.join(here, f) for f in DEFAULT]
@@ -100,11 +148,22 @@ def main():
                 print(f"           line {line:>5}  {fn}()  ->  {name}")
         else:
             print(f"  ok     {rel}")
-    if bad:
-        print(f"\n{bad} module(s) reference names they never bind. "
-              "Fix before pushing to Kaggle.")
+    cross = check_cross_module(here)
+    if cross:
+        print("\n  FAIL   cross-module references that do not resolve:")
+        for caller, line, ref, mod in cross:
+            print(f"           {caller}:{line}  {ref}  not defined in {mod}.py")
+    else:
+        print("  ok     cross-module references (K.* / P.*)")
+
+    if bad or cross:
+        if bad:
+            print(f"\n{bad} module(s) reference names they never bind.")
+        if cross:
+            print(f"{len(cross)} unresolved cross-module reference(s).")
+        print("Fix before pushing to Kaggle.")
         sys.exit(1)
-    print("\nAll modules bind every name they read.")
+    print("\nAll modules bind every name they read, and every K.*/P.* resolves.")
 
 
 if __name__ == "__main__":

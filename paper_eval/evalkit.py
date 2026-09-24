@@ -203,14 +203,42 @@ def is_central(bbox, width):
 # --------------------------------------------------------------------------
 # matching
 # --------------------------------------------------------------------------
-def match_detections(gt_anns, preds, h, w):
+def gt_masks_for(gt_anns, h, w):
+    """Decode each ground-truth polygon once.
+
+    Anything that sweeps a parameter must reuse the result: decoding is the
+    most expensive step in the harness, and the ground truth does not change
+    with tau. Re-decoding per tau made the projected sweep ~6 hours on its own.
+    """
+    return [poly_to_mask(a["segmentation"], h, w) for a in gt_anns]
+
+
+def _xyxy(bbox):
+    x, y, w, h = bbox
+    return (x, y, x + w, y + h)
+
+
+def _boxes_overlap(a, b):
+    return not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+
+
+def match_detections(gt_anns, preds, h, w, gt_masks=None):
     """Greedy highest-score-first matching at mask IoU >= 0.5.
 
-    gt_anns : COCO annotation dicts (carry 'segmentation' and 'category_id')
-    preds   : list of dicts with 'mask' (bool array) and 'fdi'
-    returns : list of (gt_ann, pred_or_None, iou)
+    gt_anns  : COCO annotation dicts (carry 'segmentation' and 'category_id')
+    preds    : dicts with 'mask' (bool array), 'box' [x1,y1,x2,y2], 'fdi'
+    gt_masks : optional, from gt_masks_for(), to avoid re-decoding in a sweep
+    returns  : list of (gt_ann, pred_or_None, iou), one entry per gt_ann
+
+    A mask lies inside its own box, so two detections whose BOXES are disjoint
+    cannot have overlapping masks. Screening on boxes first is therefore exact
+    -- it changes no match -- and skips almost every full-resolution mask
+    comparison, which is what makes the 716-image sweep finish in time.
     """
-    gt_masks = [poly_to_mask(a["segmentation"], h, w) for a in gt_anns]
+    if gt_masks is None:
+        gt_masks = gt_masks_for(gt_anns, h, w)
+    gt_boxes = [_xyxy(a["bbox"]) for a in gt_anns]
+
     order = sorted(range(len(preds)), key=lambda i: -preds[i].get("score", 0.0))
     taken = set()
     out = [(a, None, 0.0) for a in gt_anns]
@@ -218,10 +246,13 @@ def match_detections(gt_anns, preds, h, w):
         pm = preds[pi].get("mask")
         if pm is None:
             continue
+        pb = preds[pi].get("box")
         best_iou, best_gi = 0.0, None
         for gi, gm in enumerate(gt_masks):
             if gi in taken:
                 continue
+            if pb is not None and not _boxes_overlap(gt_boxes[gi], pb):
+                continue                      # exact: disjoint boxes -> IoU 0
             v = mask_iou(gm, pm)
             if v > best_iou:
                 best_iou, best_gi = v, gi

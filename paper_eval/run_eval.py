@@ -395,9 +395,10 @@ def tau_sweep(predictor, images, gt_teeth, limit=None):
         h, w = img.shape[:2]
         out = infer(predictor, img, "full")          # cache: fuse ONCE
         gts = gt_teeth[iid]
+        gtm = K.gt_masks_for(gts, h, w)              # decode GT ONCE, not per tau
         for t in taus:
             teeth, pre, _ = teeth_pipeline(out, w, "full", tau=t)
-            pairs = K.match_detections(gts, teeth, h, w)
+            pairs = K.match_detections(gts, teeth, h, w, gt_masks=gtm)
             ch = ct = ph = pt = 0
             for gt, pred, _iou in pairs:
                 if K.is_central(gt["bbox"], meta["width"]):
@@ -664,8 +665,10 @@ def main():
           f"canonical {len(manifests['canonical'])} | fdi-evaluable "
           f"{len(manifests['fdi_evaluable'])} | sparse {len(manifests['sparse'])}")
 
-    configs = RUNNABLE if (args.all or args.smoke_test) else (
-        [args.config] if args.config else [])
+    # --smoke-test only shrinks the workload; it must NOT select configs.
+    # It used to imply --all, so `--routing-ab --smoke-test` silently ran the
+    # entire ablation a second time.
+    configs = RUNNABLE if args.all else ([args.config] if args.config else [])
     need_model = bool(configs) or args.sweep or args.latency or args.routing_ab
     if not (need_model or args.coco_eval):
         ap.error("nothing to do: pass --config/--all/--coco-eval/--sweep/--latency/--routing-ab")
