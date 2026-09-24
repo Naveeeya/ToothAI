@@ -1,0 +1,25 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 5dce40872d67b368f4ec6b9be7e84e5d702731a8+dirty (stamped at bundle build 2026-09-24T09:12:07+00:00)
+# gpu: Tesla T4
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# central_threshold = max(tau*0.7, 0.08)  (app.py:963)
+# peripheral threshold = tau               (app.py:965)
+# post-fusion detections cached once per image; only tau varies
+tau,central_threshold,central_recall,peripheral_recall,teeth_per_image
+0.05,0.08,0.982052,0.943001,23.3735
+0.08,0.08,0.985564,0.948232,22.5648
+0.12,0.084,0.987124,0.950577,21.8642
+0.18,0.126,0.986734,0.955447,20.4352
+0.2,0.14,0.986734,0.956169,20.1034
+0.25,0.175,0.985564,0.957973,19.4336
+0.3,0.21,0.985174,0.959776,18.8873
+0.35,0.245,0.985174,0.960317,18.4907
+0.42,0.294,0.984393,0.961039,18.0340
+0.5,0.35,0.983613,0.962302,17.5802

@@ -139,6 +139,16 @@ def main():
 
     plan, total = [], 0
     plan.append((coco, "data/test/_annotations.coco.json"))
+    # The same 716 images under the 9-class schema. Required: a 9-class model
+    # scored against the 41-class annotations gets ~0 AP by construction, which
+    # is what happened on the first full run.
+    nine = os.path.join(ROOT, "data", "final-di-remapped", "test",
+                        "_annotations.coco.json")
+    if os.path.exists(nine):
+        plan.append((nine, "data/test9/_annotations.coco.json"))
+    else:
+        print("  WARNING: 9-class annotations missing; that model's COCO eval "
+              "will be skipped rather than scored against the wrong schema")
     for fn in imgs:
         # Skip macOS AppleDouble sidecars. This repo lives on an exFAT volume,
         # which materialises a "._<name>" file next to anything carrying

@@ -1,0 +1,82 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 5dce40872d67b368f4ec6b9be7e84e5d702731a8+dirty (stamped at bundle build 2026-09-24T09:12:07+00:00)
+# gpu: Tesla T4
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# offset = predicted index in FDI_UPPER/FDI_LOWER minus true index
+# restricted to teeth placed in the CORRECT jaw
+# SUBSET: 112 images = 67 full-arch canonical + 45 mid canonical-partial.
+#   The 5 sparse canonical-partial images are excluded: their gaps are
+#   unannotated teeth, not absent ones, so an offset there would measure
+#   annotation policy rather than the anchoring flaw.
+# sort_and_assign_fdi always labels the leftmost detection 18/48 and
+# its gap check never runs before the first tooth (app.py:126-135),
+# so a missing third molar shifts the whole jaw by one.
+config,offset,count
+single_pass,-7,2
+single_pass,-6,1
+single_pass,-5,2
+single_pass,-4,25
+single_pass,-3,34
+single_pass,-2,166
+single_pass,-1,455
+single_pass,0,2174
+single_pass,1,270
+single_pass,2,4
+single_pass,3,4
+full,-7,2
+full,-6,2
+full,-5,6
+full,-4,9
+full,-3,22
+full,-2,121
+full,-1,446
+full,0,2050
+full,1,350
+full,2,79
+full,3,18
+full,4,13
+full,5,5
+full_fix_routing,-7,2
+full_fix_routing,-6,3
+full_fix_routing,-5,12
+full_fix_routing,-4,20
+full_fix_routing,-3,26
+full_fix_routing,-2,148
+full_fix_routing,-1,456
+full_fix_routing,0,2077
+full_fix_routing,1,345
+full_fix_routing,2,35
+no_zone_threshold,-7,1
+no_zone_threshold,-6,2
+no_zone_threshold,-5,5
+no_zone_threshold,-4,8
+no_zone_threshold,-3,40
+no_zone_threshold,-2,123
+no_zone_threshold,-1,461
+no_zone_threshold,0,2107
+no_zone_threshold,1,299
+no_zone_threshold,2,52
+no_zone_threshold,3,10
+no_zone_threshold,4,13
+no_zone_threshold,5,5
+nms,-7,2
+nms,-6,7
+nms,-5,4
+nms,-4,8
+nms,-3,25
+nms,-2,102
+nms,-1,400
+nms,0,1983
+nms,1,404
+nms,2,99
+nms,3,29
+nms,4,46
+nms,5,5
+nms,6,3

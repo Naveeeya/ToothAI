@@ -1,0 +1,84 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 5dce40872d67b368f4ec6b9be7e84e5d702731a8+dirty (stamped at bundle build 2026-09-24T09:12:07+00:00)
+# gpu: Tesla T4
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# SUBSET: the 93 FULL-ARCH images only (n = 93)
+#   Only on a complete arch does an absent label mean an absent
+#   tooth. Sparse images (1-10 labels) belong to the anomaly-
+#   annotation regime and are EXCLUDED from this file entirely.
+# config 'ensemble' is the 'full' two-pass system
+# support = ground-truth instances of that FDI position across
+#   those 93 images (max 93 per position)
+# recall = detected at mask IoU >= 0.5 (detection, not numbering)
+fdi,config,recall,support
+18,single_pass,0.967742,93
+17,single_pass,0.827957,93
+16,single_pass,0.881720,93
+15,single_pass,0.978495,93
+14,single_pass,0.956989,93
+13,single_pass,0.978495,93
+12,single_pass,1.000000,93
+11,single_pass,0.946237,93
+21,single_pass,0.967742,93
+22,single_pass,0.913978,93
+23,single_pass,0.978495,93
+24,single_pass,1.000000,93
+25,single_pass,0.978495,93
+26,single_pass,0.946237,93
+27,single_pass,0.903226,93
+28,single_pass,0.978495,93
+48,single_pass,0.967742,93
+47,single_pass,0.903226,93
+46,single_pass,0.967742,93
+45,single_pass,0.989247,93
+44,single_pass,1.000000,93
+43,single_pass,0.978495,93
+42,single_pass,0.956989,93
+41,single_pass,0.903226,93
+31,single_pass,0.956989,93
+32,single_pass,0.978495,93
+33,single_pass,0.967742,93
+34,single_pass,0.956989,93
+35,single_pass,0.989247,93
+36,single_pass,0.967742,93
+37,single_pass,0.720430,93
+38,single_pass,0.913978,93
+18,ensemble,0.967742,93
+17,ensemble,0.838710,93
+16,ensemble,0.870968,93
+15,ensemble,0.978495,93
+14,ensemble,0.956989,93
+13,ensemble,0.978495,93
+12,ensemble,1.000000,93
+11,ensemble,0.946237,93
+21,ensemble,0.956989,93
+22,ensemble,0.913978,93
+23,ensemble,0.978495,93
+24,ensemble,1.000000,93
+25,ensemble,0.978495,93
+26,ensemble,0.924731,93
+27,ensemble,0.860215,93
+28,ensemble,0.946237,93
+48,ensemble,0.967742,93
+47,ensemble,0.903226,93
+46,ensemble,0.967742,93
+45,ensemble,0.989247,93
+44,ensemble,1.000000,93
+43,ensemble,0.978495,93
+42,ensemble,0.956989,93
+41,ensemble,0.903226,93
+31,ensemble,0.935484,93
+32,ensemble,0.978495,93
+33,ensemble,0.956989,93
+34,ensemble,0.956989,93
+35,ensemble,0.978495,93
+36,ensemble,0.946237,93
+37,ensemble,0.688172,93
+38,ensemble,0.849462,93

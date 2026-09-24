@@ -423,11 +423,28 @@ def coco_eval(model_dirs, limit=None):
     rows = []
     for md in model_dirs:
         name = os.path.basename(md)
+        # Load first: the model's NUM_CLASSES decides which annotation schema
+        # it may be scored against. Registering the 41-class GT for a 9-class
+        # model produced segm_AP 0.0002 on the first full run -- a schema
+        # mismatch reported as a result.
+        pred = load_predictor(md, score_thresh=0.05)
+        nc = pred.cfg.MODEL.ROI_HEADS.NUM_CLASSES
+        ann = K.annotations_for(nc)
+        if not os.path.exists(ann):
+            print(f"    SKIP {name}: needs {os.path.basename(os.path.dirname(ann))}"
+                  f"/_annotations.coco.json for its {nc}-class schema, not shipped")
+            rows.append({"model": name, "min_size_test": pred.cfg.INPUT.MIN_SIZE_TEST,
+                         "max_size_test": pred.cfg.INPUT.MAX_SIZE_TEST,
+                         "min_size_test_yaml": None, "max_size_test_yaml": None,
+                         "num_classes": nc, "segm_AP": None, "segm_AP50": None,
+                         "bbox_AP": None,
+                         "sha256": K.sha256_file(os.path.join(md, "model_final.pth"))})
+            continue
+        print(f"    scoring {nc}-class model against {ann.split('/data/')[-1]}")
         ds = f"tooth716_{name}"
         if ds in DatasetCatalog.list():
             DatasetCatalog.remove(ds); MetadataCatalog.remove(ds)
-        register_coco_instances(ds, {}, K.SPLIT_JSON, K.SPLIT_DIR)
-        pred = load_predictor(md, score_thresh=0.05)
+        register_coco_instances(ds, {}, ann, K.SPLIT_DIR)
         # off the live cfg object, not the YAML: this is what actually ran
         mn = pred.cfg.INPUT.MIN_SIZE_TEST
         mx = pred.cfg.INPUT.MAX_SIZE_TEST

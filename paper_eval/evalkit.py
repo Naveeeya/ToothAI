@@ -17,6 +17,20 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPLIT_DIR = os.path.join(ROOT, "data", "final-di-stratified", "test")
 SPLIT_JSON = os.path.join(SPLIT_DIR, "_annotations.coco.json")
 
+# The SAME 716 images, labelled under the 9-class schema (verified: identical
+# file-name sets). A 9-class model MUST be scored against this, not against
+# SPLIT_JSON: under the 41-class schema its class 1 "Caries" would be scored
+# against GT category 1, a tooth position, giving ~0 AP by construction.
+SPLIT_JSON_9CLASS = os.path.join(ROOT, "data", "final-di-remapped", "test",
+                                 "_annotations.coco.json")
+
+
+def annotations_for(num_classes):
+    """Pick the annotation file whose schema matches the model."""
+    if num_classes == 9:
+        return SPLIT_JSON_9CLASS
+    return SPLIT_JSON
+
 TEETH_MODEL = os.path.join(ROOT, "output", "resnet50_9class_20k")
 ANOM_MODEL = os.path.join(ROOT, "output", "rtx4060_48k")
 CASCADE_MODEL = os.path.join(ROOT, "output", "resnext101_cascade_60k")

@@ -145,14 +145,29 @@ def main():
         nz_r = num(nozone, "recall_fullarch")
         clahe_delta = f_r - s_r                    # adding the CLAHE pass
         zone_delta = f_r - nz_r if nz_r is not None else None
-        note = (f"CLAHE pass contributes   full - single_pass       = {clahe_delta:+.4f}\n"
-                f"zone threshold contributes full - no_zone_threshold = "
-                f"{zone_delta:+.4f}" if zone_delta is not None else "")
-        if zone_delta is not None and abs(clahe_delta) < abs(zone_delta):
-            rep.add("the CLAHE pass is a principal contributor",
+        note = (f"CLAHE pass       full - single_pass       = {clahe_delta:+.4f}\n"
+                f"zone threshold   full - no_zone_threshold = {zone_delta:+.4f}"
+                if zone_delta is not None else "")
+        # Sign first, magnitude second. A negative delta means the component
+        # makes the system WORSE; comparing |delta| would rank "harms most"
+        # as "contributes most", which is the opposite of the question.
+        if zone_delta is None:
+            rep.add("the CLAHE pass and the zone threshold both contribute",
+                    "UNTESTABLE", "no_zone_threshold row missing")
+        elif clahe_delta <= 0 and zone_delta <= 0:
+            rep.add("the CLAHE pass and the zone threshold both contribute",
                     "CONTRADICTED",
+                    f"BOTH reduce full-arch recall: CLAHE {clahe_delta:+.4f}, "
+                    f"zone threshold {zone_delta:+.4f}",
+                    note + "\nNeither component earns its place on this metric.")
+        elif clahe_delta <= 0:
+            rep.add("the CLAHE pass is a principal contributor", "CONTRADICTED",
+                    f"the CLAHE pass REDUCES full-arch recall by "
+                    f"{-clahe_delta*100:.2f} percentage points", note)
+        elif clahe_delta < zone_delta:
+            rep.add("the CLAHE pass is a principal contributor", "CONTRADICTED",
                     "the zone threshold contributes more than the CLAHE pass", note)
-        elif zone_delta is not None:
+        else:
             rep.add("the CLAHE pass is a principal contributor", "SUPPORTED",
                     "CLAHE contributes at least as much as the zone threshold", note)
 
@@ -197,12 +212,32 @@ def main():
                 "UNTESTABLE", "coco_eval_716.csv absent",
                 "rtx4060_48k was never evaluated before this harness ran.")
     else:
+        # The registered ground truth is the 41-class schema. A 9-class model's
+        # predictions are then scored against the wrong categories entirely
+        # (its class 1 "Caries" against GT category 1, a tooth position), so
+        # the result is a schema mismatch, not performance. Detect and refuse
+        # to report it rather than printing a near-zero AP as a finding.
+        suspect = [c for c in coco
+                   if c["num_classes"] != "41" and num(c, "segm_AP") is not None
+                   and num(c, "segm_AP") < 1.0]
         note = "\n".join(
             f"{c['model']:<26} nc={c['num_classes']:<3} "
             f"{c['min_size_test']}/{c['max_size_test']}  segm_AP={c['segm_AP']}"
+            + ("   <- INVALID, schema mismatch" if c in suspect else "")
             for c in coco)
-        rep.add("41-class vs 9-class on one split", "SUPPORTED",
-                "all three models now evaluated on the same 716 images", note)
+        if suspect:
+            rep.add("41-class beats 9-class on the same ResNet-50 backbone",
+                    "UNTESTABLE",
+                    f"{len(suspect)} model(s) scored against the wrong label schema",
+                    note + "\nThe 716 split was registered with its 41-class\n"
+                           "annotations for every model. A 9-class model's ids do\n"
+                           "not correspond, so its AP is ~0 by construction.\n"
+                           "The 9-class GT for the same 716 images exists at\n"
+                           "data/final-di-remapped/test and was not shipped in\n"
+                           "the Kaggle bundle. Re-run that model against it.")
+        else:
+            rep.add("41-class vs 9-class on one split", "SUPPORTED",
+                    "all three models evaluated on the same 716 images", note)
 
     # ---- 11. anchoring ----------------------------------------------------
     if offs:
