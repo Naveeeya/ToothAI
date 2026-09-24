@@ -44,6 +44,7 @@ import argparse
 import csv
 import os
 import statistics
+import subprocess
 import sys
 import time
 from collections import Counter, defaultdict
@@ -56,7 +57,14 @@ import pipeline as P
 
 RESULTS = os.path.join(K.ROOT, "paper_eval", "results")
 
-RUNNABLE = ["single_pass", "full", "no_zone_threshold", "nms"]
+RUNNABLE = ["single_pass", "full", "full_fix_routing", "no_zone_threshold", "nms"]
+
+# full_fix_routing runs the deployed two-pass system with the app.py:953-958
+# class-routing bug CORRECTED. It is a separate row rather than a flag on the
+# whole run so the paper can show the deployed number and the fixed number
+# side by side.
+BASE_CONFIG = {"full_fix_routing": "full"}
+FIXED_ROUTING = {"full_fix_routing"}
 NOT_RUN = {
     "no_gamma": "not in deployed system (apply_gamma defined at app.py:454, called nowhere)",
     "no_flip": "not in deployed system (flip_instances_horizontal at app.py:475, called nowhere)",
@@ -71,7 +79,10 @@ NMS_IOU = 0.4           # app.py:2314 (DIoU)
 
 
 # --------------------------------------------------------------------------
-def load_predictor(model_dir, score_thresh=0.05):
+LOADED_INPUT_SIZE = {}     # model_dir -> (min, max) as the cfg OBJECT holds it
+
+
+def load_predictor(model_dir, score_thresh=0.05, announce=True):
     import torch
     from detectron2.config import get_cfg
     from detectron2.engine import DefaultPredictor
@@ -80,6 +91,15 @@ def load_predictor(model_dir, score_thresh=0.05):
     cfg.MODEL.WEIGHTS = os.path.join(model_dir, "model_final.pth")
     cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = score_thresh   # app.py:375
+    # Read the size off the live cfg object, not the YAML on disk: merge_from_file
+    # plus any default can diverge from the file, and what the model actually
+    # ran at is the only thing the paper may state.
+    mn, mx = cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MAX_SIZE_TEST
+    LOADED_INPUT_SIZE[os.path.basename(model_dir.rstrip("/"))] = (mn, mx)
+    if announce:
+        print(f"  {os.path.basename(model_dir.rstrip('/')):<26} "
+              f"cfg.INPUT.MIN_SIZE_TEST={mn}  cfg.INPUT.MAX_SIZE_TEST={mx}  "
+              f"NUM_CLASSES={cfg.MODEL.ROI_HEADS.NUM_CLASSES}  device={cfg.MODEL.DEVICE}")
     return DefaultPredictor(cfg)
 
 
@@ -180,8 +200,11 @@ def teeth_pipeline(outputs, width, config, tau=TEETH_TAU, fix_cls_routing=False)
 
 # --------------------------------------------------------------------------
 def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
-             limit=None, fix_cls_routing=False):
+             limit=None, fix_cls_routing=False, ids=None):
     """Run one configuration over the split and accumulate every metric."""
+    infer_cfg = BASE_CONFIG.get(config, config)
+    if config in FIXED_ROUTING:
+        fix_cls_routing = True
     acc = {
         "recall_full": [], "recall_anom": [],
         "central_full": [],
@@ -190,7 +213,8 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
         "mask_ious": [], "pre_prune": [], "final": [], "pruned": 0,
         "per_tooth": defaultdict(lambda: [0, 0]),
     }
-    ids = sorted(gt_teeth) if limit is None else sorted(gt_teeth)[:limit]
+    if ids is None:
+        ids = sorted(gt_teeth) if limit is None else sorted(gt_teeth)[:limit]
     for n, iid in enumerate(ids, 1):
         meta = images[iid]
         path = os.path.join(K.SPLIT_DIR, meta["file_name"])
@@ -199,8 +223,8 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
         if img is None:
             continue
         h, w = img.shape[:2]
-        out = infer(predictor, img, config)
-        teeth, pre, fired = teeth_pipeline(out, w, config,
+        out = infer(predictor, img, infer_cfg)
+        teeth, pre, fired = teeth_pipeline(out, w, infer_cfg,
                                            fix_cls_routing=fix_cls_routing)
         acc["pre_prune"].append(pre)
         acc["final"].append(len(teeth))
@@ -281,6 +305,82 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
 
 
 # --------------------------------------------------------------------------
+def routing_ab(predictor, images, gt_teeth, gt_anoms, n_images=5):
+    """A/B the app.py:953-958 class-routing bug on ANOMALY-BEARING images.
+
+    The bug routes an anomaly detection from the 9-class model into the TEETH
+    list. It therefore cannot fire on an image where that model finds no
+    anomaly -- and the 93 full-arch images carry zero anomaly annotations, so
+    the ordinary smoke sample cannot settle the question at all.
+
+    Sample from the 380 images that DO carry anomaly labels, run the teeth
+    pipeline both ways, and diff the resulting teeth lists. If they are
+    identical on every image, the bug does not affect tooth metrics and the
+    audit must say so rather than implying otherwise.
+    """
+    import cv2
+    pool = sorted(i for i in gt_teeth if gt_anoms.get(i) and gt_teeth.get(i))
+    if not pool:
+        print("  no anomaly-bearing images with tooth labels -- cannot test")
+        return []
+    step = max(1, len(pool) // n_images)
+    chosen = [pool[k * step] for k in range(min(n_images, len(pool)))]
+
+    print(f"\n{'='*78}")
+    print("ROUTING A/B -- app.py:953-958, on ANOMALY-BEARING images")
+    print(f"{'='*78}")
+    print(f"pool: {len(pool)} images carrying both tooth and anomaly labels; "
+          f"sampling {len(chosen)}")
+
+    rows, any_diff = [], False
+    for iid in chosen:
+        meta = images[iid]
+        img = cv2.imread(os.path.join(K.SPLIT_DIR, meta["file_name"]))
+        if img is None:
+            continue
+        w = img.shape[1]
+        out = infer(predictor, img, "full")
+        both = {}
+        for fix in (False, True):
+            teeth, pre, _f = teeth_pipeline(out, w, "full", fix_cls_routing=fix)
+            both[fix] = {
+                "n_final": len(teeth),
+                "n_preprune": pre,
+                "fdis": sorted(t.get("fdi") for t in teeth),
+                "sig": sorted((round(float(t["box"][0]), 1), round(float(t["box"][1]), 1),
+                               round(float(t.get("score", 0)), 4)) for t in teeth),
+            }
+        same = both[False]["sig"] == both[True]["sig"]
+        any_diff |= (not same)
+        rows.append((iid, both, same))
+        print(f"\n  image_id {iid}  ({meta['file_name'][:44]})")
+        print(f"    GT: {len(gt_teeth[iid])} teeth, {len(gt_anoms[iid])} anomalies")
+        for fix in (False, True):
+            b = both[fix]
+            tag = "FIXED " if fix else "buggy "
+            print(f"    {tag} pre-prune {b['n_preprune']:>3}  final {b['n_final']:>3}  "
+                  f"FDIs {b['fdis']}")
+        print(f"    identical teeth lists: {same}")
+        if not same:
+            only_buggy = set(both[False]["sig"]) - set(both[True]["sig"])
+            only_fixed = set(both[True]["sig"]) - set(both[False]["sig"])
+            print(f"      only in buggy (x,y,score): {sorted(only_buggy)[:6]}")
+            print(f"      only in fixed (x,y,score): {sorted(only_fixed)[:6]}")
+
+    print(f"\n{'-'*78}")
+    if any_diff:
+        n = sum(1 for _i, _b, same in rows if not same)
+        print(f"VERDICT: the teeth lists DIFFER on {n}/{len(rows)} images.")
+        print("  The routing bug DOES affect tooth metrics. Report both rows.")
+    else:
+        print(f"VERDICT: teeth lists are IDENTICAL on all {len(rows)} images.")
+        print("  On this evidence the bug does NOT affect tooth metrics, and")
+        print("  the audit must be worded to say so -- it misroutes anomalies")
+        print("  out of the anomaly list, but nothing reaches the teeth list.")
+    print(f"{'-'*78}")
+    return rows
+
+
 def tau_sweep(predictor, images, gt_teeth, limit=None):
     """Sweep tau, caching post-fusion output once per image."""
     taus = [0.05, 0.08, 0.12, 0.18, 0.20, 0.25, 0.30, 0.35, 0.42, 0.50]
@@ -326,15 +426,21 @@ def coco_eval(model_dirs, limit=None):
         if ds in DatasetCatalog.list():
             DatasetCatalog.remove(ds); MetadataCatalog.remove(ds)
         register_coco_instances(ds, {}, K.SPLIT_JSON, K.SPLIT_DIR)
-        mn, mx = K.config_input_size(md)
-        print(f"  {name}: MIN_SIZE_TEST={mn} MAX_SIZE_TEST={mx}")
         pred = load_predictor(md, score_thresh=0.05)
+        # off the live cfg object, not the YAML: this is what actually ran
+        mn = pred.cfg.INPUT.MIN_SIZE_TEST
+        mx = pred.cfg.INPUT.MAX_SIZE_TEST
+        mn_yaml, mx_yaml = K.config_input_size(md)
+        if (mn, mx) != (mn_yaml, mx_yaml):
+            print(f"    NOTE: cfg object says {mn}/{mx}, YAML on disk says "
+                  f"{mn_yaml}/{mx_yaml} -- reporting the cfg object")
         ev = COCOEvaluator(ds, output_dir=os.path.join(RESULTS, f"coco_{name}"))
         loader = build_detection_test_loader(pred.cfg, ds)
         res = inference_on_dataset(pred.model, loader, ev)
         rows.append({
             "model": name,
             "min_size_test": mn, "max_size_test": mx,
+            "min_size_test_yaml": mn_yaml, "max_size_test_yaml": mx_yaml,
             "num_classes": pred.cfg.MODEL.ROI_HEADS.NUM_CLASSES,
             "segm_AP": res.get("segm", {}).get("AP"),
             "segm_AP50": res.get("segm", {}).get("AP50"),
@@ -500,6 +606,28 @@ def summarise(rows):
     print("                    the only over-detection measure valid on sparse GT.")
 
 
+def gpu_identity():
+    """Which physical card this ran on -- the box has 2x T4 and nothing here
+    is multi-GPU, so the latency figure must name one card."""
+    vis = os.environ.get("CUDA_VISIBLE_DEVICES", "(unset -- all visible)")
+    name = uuid = "unknown"
+    try:
+        import torch
+        if torch.cuda.is_available():
+            name = torch.cuda.get_device_name(0)
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=index,name,uuid", "--format=csv,noheader"],
+            stderr=subprocess.DEVNULL).decode().strip().splitlines()
+        if out:
+            uuid = out[0].strip()
+    except Exception:
+        pass
+    return {"CUDA_VISIBLE_DEVICES": vis, "torch_device_0": name, "nvidia_smi_row0": uuid}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", choices=RUNNABLE + list(NOT_RUN))
@@ -510,8 +638,11 @@ def main():
     ap.add_argument("--coco-eval", action="store_true")
     ap.add_argument("--latency", action="store_true")
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--routing-ab", action="store_true",
+                    help="A/B the app.py:953-958 routing bug on anomaly-bearing images")
     ap.add_argument("--fix-cls-routing", action="store_true",
-                    help="correct the app.py:953-958 class-routing bug (default OFF)")
+                    help="correct the app.py:953-958 routing bug for EVERY config "
+                         "(the full_fix_routing config does it for one row only)")
     args = ap.parse_args()
 
     os.makedirs(RESULTS, exist_ok=True)
@@ -520,38 +651,51 @@ def main():
     manifests = K.load_manifests()
     class_map = K.load_class_map()
 
-    extra = [f"fix_cls_routing={args.fix_cls_routing}"]
+    gid = gpu_identity()
+    print("GPU pinning:")
+    for k, v in gid.items():
+        print(f"  {k:<22} {v}")
+    extra = [f"fix_cls_routing={args.fix_cls_routing}"] + \
+            [f"{k}={v}" for k, v in gid.items()]
     if limit:
         extra.append(f"*** LIMITED RUN: {limit} images -- NOT publishable ***")
 
-    print(f"split: {len(images)} images | full-arch {len(manifests['full_arch'])} | "
+    print(f"\nsplit: {len(images)} images | full-arch {len(manifests['full_arch'])} | "
           f"canonical {len(manifests['canonical'])} | fdi-evaluable "
           f"{len(manifests['fdi_evaluable'])} | sparse {len(manifests['sparse'])}")
-    print(f"gpu: {K.gpu_name()}")
 
     configs = RUNNABLE if (args.all or args.smoke_test) else (
         [args.config] if args.config else [])
-    if not (configs or args.coco_eval or args.sweep or args.latency):
-        ap.error("nothing to do: pass --config/--all/--coco-eval/--sweep/--latency")
+    need_model = bool(configs) or args.sweep or args.latency or args.routing_ab
+    if not (need_model or args.coco_eval):
+        ap.error("nothing to do: pass --config/--all/--coco-eval/--sweep/--latency/--routing-ab")
 
     predictor = None
-    if configs or args.sweep or args.latency:
-        print(f"loading teeth model: {K.TEETH_MODEL}")
+    if need_model:
+        print("\nloading teeth model (sizes read off the live cfg object):")
         predictor = load_predictor(K.TEETH_MODEL)
+        extra.append(f"teeth cfg.INPUT MIN/MAX_SIZE_TEST="
+                     f"{LOADED_INPUT_SIZE.get('resnet50_9class_20k')}")
 
+    # ---- STAGE 0: routing A/B (cheap, and it can change the audit) --------
+    if args.routing_ab:
+        routing_ab(predictor, images, gt_teeth, gt_anoms,
+                   n_images=5 if limit else 12)
+
+    # ---- STAGE 1: the ablation. FIRST, and written as soon as it is done --
     rows, per_tooth, offsets = [], {}, {}
     for cfg in configs:
-        print(f"\n--- {cfg} ---")
+        print(f"\n--- {cfg} ---", flush=True)
         acc = evaluate(cfg, predictor, images, gt_teeth, manifests, class_map,
                        limit=limit, fix_cls_routing=args.fix_cls_routing)
         r = {"config": cfg, "status": "ok", "reason": ""}
-        for key, src in (("recall_fullarch", "recall_full"),
-                         ("recall_anomaly_bearing_teeth", "recall_anom"),
-                         ("central_recall_fullarch", "central_full"),
-                         ("fdi_acc_canonical", "fdi_canonical"),
-                         ("fdi_acc_fullarch", "fdi_fullarch"),
-                         ("jaw_acc", "jaw")):
-            v, lo, hi = K.bootstrap_ci(acc[src])
+        for key, srcname in (("recall_fullarch", "recall_full"),
+                             ("recall_anomaly_bearing_teeth", "recall_anom"),
+                             ("central_recall_fullarch", "central_full"),
+                             ("fdi_acc_canonical", "fdi_canonical"),
+                             ("fdi_acc_fullarch", "fdi_fullarch"),
+                             ("jaw_acc", "jaw")):
+            v, lo, hi = K.bootstrap_ci(acc[srcname])
             r[key], r[key + "_lo"], r[key + "_hi"] = v, lo, hi
         r["recall_fullarch_n"] = len(acc["recall_full"])
         r["recall_anomaly_bearing_teeth_n"] = len(acc["recall_anom"])
@@ -567,7 +711,8 @@ def main():
                                       if acc["final"] else float("nan"))
         r["pruning_fired_images"] = acc["pruned"]
         if args.latency:
-            lat = measure_latency(predictor, images, gt_teeth, cfg,
+            lat = measure_latency(predictor, images, gt_teeth,
+                                  BASE_CONFIG.get(cfg, cfg),
                                   warmup=2 if limit else 10, n=3 if limit else 200)
             if lat:
                 r["latency_median_s"] = lat["median_s"]
@@ -577,42 +722,57 @@ def main():
         rows.append(r)
         offsets[cfg] = acc["offsets"]
         if cfg in ("single_pass", "full"):
-            out_name = "ensemble" if cfg == "full" else cfg
-            per_tooth[out_name] = {k: tuple(v) for k, v in acc["per_tooth"].items()}
+            per_tooth["ensemble" if cfg == "full" else cfg] = \
+                {k: tuple(v) for k, v in acc["per_tooth"].items()}
 
-    for cfg, reason in NOT_RUN.items():
-        if args.all or args.smoke_test or args.config == cfg:
-            rows.append({"config": cfg, "status": "not_run", "reason": reason})
+        # Write after EVERY config, not at the end: a session that dies at
+        # hour two must still leave the completed configs on disk.
+        partial = rows + [{"config": c, "status": "not_run", "reason": why}
+                          for c, why in NOT_RUN.items()]
+        write_ablation(partial, extra)
+        if per_tooth:
+            write_per_tooth(per_tooth)
+        if offsets:
+            write_offsets(offsets)
+        print(f"    [checkpointed {len(rows)}/{len(configs)} configs to results/]",
+              flush=True)
 
     if rows:
+        for c, why in NOT_RUN.items():
+            rows.append({"config": c, "status": "not_run", "reason": why})
         print("\nwrote", write_ablation(rows, extra))
-    if per_tooth:
-        print("wrote", write_per_tooth(per_tooth))
-    if offsets:
-        print("wrote", write_offsets(offsets))
+        if per_tooth:
+            print("wrote", write_per_tooth(per_tooth))
+        if offsets:
+            print("wrote", write_offsets(offsets))
+        summarise(rows)
 
+    # ---- STAGE 2: tau sweep ----------------------------------------------
     if args.sweep:
-        print("\n--- tau sweep ---")
+        print("\n--- tau sweep ---", flush=True)
         taus, per = tau_sweep(predictor, images, gt_teeth, limit=limit)
         print("wrote", write_sweep(taus, per))
 
+    # ---- STAGE 3: COCO re-evaluation (longest, last) ---------------------
     if args.coco_eval:
-        print("\n--- COCO re-evaluation on the 716 split ---")
-        crows = coco_eval([K.TEETH_MODEL, K.ANOM_MODEL, K.CASCADE_MODEL], limit=limit)
+        print("\n--- COCO re-evaluation on the 716 split ---", flush=True)
         p = os.path.join(RESULTS, "coco_eval_716.csv")
-        with open(p, "w", newline="") as fh:
-            for line in K.provenance_header(
-                    ["each model evaluated at its OWN configured test size"]):
-                fh.write(line + "\n")
-            w = csv.DictWriter(fh, fieldnames=list(crows[0].keys()))
-            w.writeheader(); w.writerows(crows)
+        crows = []
+        for md in (K.TEETH_MODEL, K.ANOM_MODEL, K.CASCADE_MODEL):
+            crows += coco_eval([md], limit=limit)
+            with open(p, "w", newline="") as fh:      # rewrite after each model
+                for line in K.provenance_header(
+                        ["each model evaluated at its OWN configured test size",
+                         "sizes read off the live cfg object, not the YAML"] +
+                        [f"{k}={v}" for k, v in gid.items()]):
+                    fh.write(line + "\n")
+                w = csv.DictWriter(fh, fieldnames=list(crows[0].keys()))
+                w.writeheader(); w.writerows(crows)
+            print(f"    [checkpointed {len(crows)}/3 models to {p}]", flush=True)
         print("wrote", p)
         for c in crows:
             print(f"  {c['model']:<24} nc={c['num_classes']:<3} "
                   f"{c['min_size_test']}/{c['max_size_test']}  segm_AP={c['segm_AP']}")
-
-    if rows:
-        summarise(rows)
 
 
 if __name__ == "__main__":
