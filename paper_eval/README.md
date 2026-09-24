@@ -40,16 +40,28 @@ because `rtx4060_48k` was never evaluated.
 ### On Kaggle
 
 ```bash
+python3 paper_eval/run_eval.py --routing-ab                   # bug A/B, ~2 min
 python3 paper_eval/run_eval.py --all --smoke-test --latency   # 5 images, < 1 min
-python3 paper_eval/run_eval.py --all --latency                # ~60-90 min
-python3 paper_eval/run_eval.py --sweep                        # ~25-40 min
-python3 paper_eval/run_eval.py --coco-eval                    # ~20-30 min
-python3 paper_eval/export_panels.py --suggest-images          # ~5 min
+python3 paper_eval/run_eval.py --all --latency                # the ablation
+python3 paper_eval/run_eval.py --sweep                        # tau sweep
+python3 paper_eval/run_eval.py --coco-eval                    # 3 models
+python3 paper_eval/export_panels.py --suggest-images
 python3 paper_eval/export_panels.py --image-id <id>
 ```
 
-Total: roughly **2–3 hours** on a T4. Estimated from image counts, not measured;
-the first real run replaces these figures.
+`--smoke-test` only shrinks the workload to 5 images; it does **not** select
+configurations. Pass `--all` or `--config <name>` for that.
+
+Stages write their CSVs as they complete — `ablation.csv` after every config,
+`coco_eval_716.csv` after every model — and the ablation runs first, so a
+session that dies part-way still leaves finished work on disk.
+
+Measured per-image latency from the smoke run on one pinned Tesla T4:
+`single_pass` 0.23 s, the two-pass configs 0.57–0.61 s. A first projection of
+the whole run at those rates came to ~9.5 h, close enough to Kaggle's cap to
+matter; caching decoded ground-truth masks across taus and screening mask IoU
+on bounding boxes first brought it down. Both are exact — a mask lies inside
+its own box, so disjoint boxes imply zero mask IoU and no match changes.
 
 ## Outputs
 
@@ -93,6 +105,21 @@ git state, GPU name and seed.
 
 These rows are written to `ablation.csv` empty, with the reason in the `reason`
 column. No metric anywhere is estimated, interpolated or filled in by hand.
+
+## The `full_fix_routing` row
+
+`full` is the deployed system, carrying the `app.py:953-958` class-routing bug
+verbatim. `full_fix_routing` is the same system with that bug corrected.
+
+It is a row rather than a whole-run flag because both numbers belong in the
+paper. The bug routes anomaly detections into the teeth list, so on the 491
+sparse images — which are precisely the ones carrying anomaly labels — the
+deployed rows' `recall_anomaly_bearing_teeth` and pre-prune tooth counts are
+contaminated by phantom teeth. Measured on 5 anomaly-bearing images, the two
+disagree on all 5, by up to 2.5x in reported tooth count (see AUDIT.md 5.3).
+
+`full_fix_routing` is the only row where those two columns mean what their
+names say.
 
 ## Determinism
 
