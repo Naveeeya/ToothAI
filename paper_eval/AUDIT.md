@@ -284,6 +284,52 @@ affected.
 
 ---
 
+## 5.8 The central zone is the EASY zone
+
+The system's central-relaxation rule exists because the spinal shadow is
+believed to suppress detection near the midline (`app.py:960-965`, the
+comment reads "model scores lower here"). Measured on the 93 full-arch
+images, the opposite is true.
+
+| configuration | central recall (35-65%) | peripheral recall | gap |
+|---|---|---|---|
+| `single_pass` | **98.4** [97.6, 99.1] | 90.9 [89.1, 92.6] | **+7.6** |
+| `full` | 98.4 [97.5, 99.1] | 89.2 [87.3, 91.1] | +9.1 |
+| `full_fix_routing` | 98.3 [97.4, 99.0] | 90.1 [88.3, 91.8] | +8.2 |
+| `no_zone_threshold` | 98.4 [97.5, 99.1] | 89.8 [87.9, 91.6] | +8.6 |
+| `nms` | 98.4 [97.5, 99.1] | 89.0 [86.9, 91.0] | +9.4 |
+
+Paired on the same 93 images, `single_pass` central minus peripheral is
+**+7.55 pp [+5.76, +9.33]**, and central exceeds peripheral on **63 of 93**
+images individually. Detection is *better* in the central zone by a wide and
+statistically clear margin, under every configuration.
+
+Three checks support the number rather than an artefact:
+
+- **Coordinate space.** COCO `width`/`height` match the actual JPEG on
+  **716/716** images. Ground truth uses `meta["width"]` and predictions use
+  `img.shape[1]`; these are the same value, so both sides use one boundary.
+- **Zone occupancy.** The 35-65% band holds **1,529 of 2,976** full-arch tooth
+  instances (**51.4%**), not the ~25-30% a uniform-width assumption suggests.
+  Incisors and canines are narrow and crowded at the midline; molars are wide
+  and reach the edges.
+- **Threshold sweep.** Central recall is flat at 98.2-98.7% across tau from
+  0.05 to 0.50. There is no operating point at which the central relaxation
+  changes the outcome.
+
+The zone holds half the dentition and it is the half made of simple,
+well-separated, high-contrast anterior teeth. The weakness is in the
+**periphery** -- the molar regions, where teeth are wide, overlapping, and
+frequently cut off at the image edge.
+
+**Consequence for the paper.** The zone-adaptive threshold addresses a
+weakness that this test set does not exhibit, in the region that is in fact
+easiest. Removing it (`no_zone_threshold`) *improves* full-arch recall by
+0.27 pp [0.10, 0.44] paired. If a spinal-shadow effect exists in clinical
+data, it is not present here and cannot be claimed from these results.
+
+---
+
 ## 6. Ground-truth quality on the 716 split
 
 Measured in `results/label_quality.csv` and `results/instance_counts.csv`.

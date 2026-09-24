@@ -3,7 +3,7 @@
 # teeth model:   output/resnet50_9class_20k/model_final.pth
 #   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
 #   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
-# git: 5dce40872d67b368f4ec6b9be7e84e5d702731a8+dirty (stamped at bundle build 2026-09-24T09:12:07+00:00)
+# git: 3be0f5c8076018aa64bb4900c3f0cd539db7c145+dirty (stamped at bundle build 2026-09-24T21:09:12+00:00)
 # gpu: Tesla T4
 # seed: 20260921   bootstrap resamples: 10000
 # NOTE: recall only. With a median of 8 labelled teeth per image, an

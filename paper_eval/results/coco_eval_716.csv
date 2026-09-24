@@ -3,7 +3,7 @@
 # teeth model:   output/resnet50_9class_20k/model_final.pth
 #   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
 #   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
-# git: 5dce40872d67b368f4ec6b9be7e84e5d702731a8+dirty (stamped at bundle build 2026-09-24T09:12:07+00:00)
+# git: 3be0f5c8076018aa64bb4900c3f0cd539db7c145+dirty (stamped at bundle build 2026-09-24T21:09:12+00:00)
 # gpu: Tesla T4
 # seed: 20260921   bootstrap resamples: 10000
 # NOTE: recall only. With a median of 8 labelled teeth per image, an
@@ -13,8 +13,8 @@
 # sizes read off the live cfg object, not the YAML
 # CUDA_VISIBLE_DEVICES=0
 # torch_device_0=Tesla T4
-# nvidia_smi_row0=0, Tesla T4, GPU-6f3eefde-8eaf-90cf-642a-c20ee38b8a62
-model,min_size_test,max_size_test,min_size_test_yaml,max_size_test_yaml,num_classes,segm_AP,segm_AP50,bbox_AP,sha256
-resnet50_9class_20k,800,1333,800,1333,9,0.00022154993277105487,0.0016807236279183472,0.0007677752922393069,d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
-rtx4060_48k,512,1024,512,1024,41,40.12989039460277,57.85653876282638,40.233698654959504,51d9bb6018dd51c51afb5c5e86819969818f188543dc64fbdaf15ba7695b56ef
-resnext101_cascade_60k,800,1333,800,1333,41,27.444587206782483,40.77419617107548,26.551896399637677,79ce2132f11588039f6eb578ba48ed2f697971fa4a0c860923d2cc70199314fb
+# nvidia_smi_row0=0, Tesla T4, GPU-f7ed8e84-eef9-f73d-9c27-adc0171d2f7a
+model,annotations_used,min_size_test,max_size_test,min_size_test_yaml,max_size_test_yaml,num_classes,segm_AP,segm_AP50,bbox_AP,mean_AP_tooth_positions,n_tooth_position_classes,generic_AP_Tooth,train_images,test_overlap_images,test_overlap_pct,contaminated,sha256
+resnet50_9class_20k,data/final-di-remapped/test/_annotations.coco.json,800,1333,800,1333,9,37.806843734101356,65.70719882750718,37.23556450007538,,0,72.5079482182997,5811,0,0.0,no,d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+rtx4060_48k,data/final-di-stratified/test/_annotations.coco.json,512,1024,512,1024,41,40.12989039460277,57.85653876282638,40.233698654959504,39.82537869322501,32,,2647,292,40.78,YES,51d9bb6018dd51c51afb5c5e86819969818f188543dc64fbdaf15ba7695b56ef
+resnext101_cascade_60k,data/final-di-stratified/test/_annotations.coco.json,800,1333,800,1333,41,27.444587206782483,40.77419617107548,26.551896399637677,26.756507395011102,32,,5584,0,0.0,no,79ce2132f11588039f6eb578ba48ed2f697971fa4a0c860923d2cc70199314fb

@@ -236,8 +236,28 @@ def main():
                            "data/final-di-remapped/test and was not shipped in\n"
                            "the Kaggle bundle. Re-run that model against it.")
         else:
-            rep.add("41-class vs 9-class on one split", "SUPPORTED",
-                    "all three models evaluated on the same 716 images", note)
+            # Overall AP mixes tooth and anomaly classes. The question is
+            # whether a network can NUMBER teeth, so compare the 32-position
+            # mean against the 9-class model's generic AP-Tooth -- and mark
+            # any row whose model saw test images during training.
+            det = []
+            for c in coco:
+                t = num(c, "mean_AP_tooth_positions")
+                g = num(c, "generic_AP_Tooth")
+                flag = (f"  CONTAMINATED {c.get('test_overlap_pct')}% "
+                        f"({c.get('test_overlap_images')} imgs)"
+                        if c.get("contaminated") == "YES" else "")
+                if g is not None:
+                    det.append(f"{c['model']:<26} generic AP-Tooth      {g:6.2f}{flag}")
+                if t is not None:
+                    det.append(f"{c['model']:<26} mean AP over 32 pos.  {t:6.2f}{flag}")
+            rep.add("a 41-class network can number teeth as well as geometry can",
+                    "CONTRADICTED",
+                    "per-position AP is far below the generic-tooth AP",
+                    "\n".join(det) +
+                    "\nThe 9-class model only has to find a tooth; the 41-class\n"
+                    "models must find AND number it. That is the comparison the\n"
+                    "design question turns on, and geometry wins it.")
 
     # ---- 11. anchoring ----------------------------------------------------
     if offs:
