@@ -11,10 +11,12 @@ and paper_eval/ itself. Nothing else -- in particular no training data.
     python3 paper_eval/kaggle/make_bundle.py --dry-run  # size only
 """
 import argparse
+import datetime
 import hashlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,6 +31,32 @@ MODELS = ["output/resnet50_9class_20k",
 CODE = ["compare_ap.py", "label_quality.py", "check_sparse_bias.py",
         "evalkit.py", "pipeline.py", "run_eval.py", "export_panels.py",
         "export_review.py", "README.md"]
+
+
+def git_state():
+    try:
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                                       stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return "unknown"
+    try:
+        d = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT,
+                                    stderr=subprocess.DEVNULL).decode().strip()
+        return f"{head}{'+dirty' if d else ''}"
+    except subprocess.CalledProcessError:
+        return f"{head}+dirty-unknown"
+
+
+def write_provenance(dest_dir):
+    """Stamp the commit into the bundle: Kaggle has no git repo, so without
+    this every results CSV would read '# git: unknown'."""
+    os.makedirs(dest_dir, exist_ok=True)
+    rec = {"git": git_state(),
+           "built_utc": datetime.datetime.now(datetime.timezone.utc)
+                                 .isoformat(timespec="seconds")}
+    with open(os.path.join(dest_dir, "BUILD_PROVENANCE.json"), "w") as fh:
+        json.dump(rec, fh, indent=2)
+    return rec
 
 
 def human(n):
@@ -67,6 +95,9 @@ def build_code_bundle():
         dst = os.path.join(CODE_BUNDLE, "paper_eval", sub)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst); total += os.path.getsize(src); n += 1
+
+    rec = write_provenance(os.path.join(CODE_BUNDLE, "paper_eval"))
+    print(f"  stamped git: {rec['git']}")
 
     meta = {"title": "Tooth-AI paper eval code",
             "id": "alphaleporus/tooth-ai-paper-eval-code",
@@ -169,6 +200,7 @@ def main():
     if swept:
         print(f"  swept {swept} AppleDouble sidecars from the bundle")
 
+    write_provenance(os.path.join(BUNDLE, "paper_eval"))
     manifest = {"files": len(plan), "bytes": total, "checkpoints": {}}
     for md in MODELS:
         p = os.path.join(BUNDLE, md, "model_final.pth")

@@ -45,11 +45,24 @@ def sha256_file(path, chunk=1 << 20):
 
 
 def git_state():
+    """Commit hash of the code that produced a result.
+
+    On Kaggle there is no git repo, so `git rev-parse` fails and provenance
+    would be lost exactly where it matters most. make_bundle.py stamps the
+    state into BUILD_PROVENANCE.json beside this file; fall back to that.
+    """
+    stamp = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         "BUILD_PROVENANCE.json")
     try:
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT,
                                        stderr=subprocess.DEVNULL).decode().strip()
     except Exception:
-        return "unknown"
+        try:
+            with open(stamp) as fh:
+                rec = json.load(fh)
+            return f"{rec['git']} (stamped at bundle build {rec['built_utc']})"
+        except Exception:
+            return "unknown"
     try:
         d = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT,
                                     stderr=subprocess.DEVNULL).decode().strip()
