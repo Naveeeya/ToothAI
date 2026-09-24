@@ -30,7 +30,8 @@ MODELS = ["output/resnet50_9class_20k",
           "output/resnext101_cascade_60k"]
 CODE = ["compare_ap.py", "label_quality.py", "check_sparse_bias.py",
         "evalkit.py", "pipeline.py", "run_eval.py", "export_panels.py",
-        "export_review.py", "README.md"]
+        "export_review.py", "check_imports.py", "check_paper_claims.py",
+        "paired_deltas.py", "README.md", "AUDIT.md"]
 
 
 def git_state():
@@ -88,13 +89,27 @@ def build_code_bundle():
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst); total += os.path.getsize(src); n += 1
     for sub in ("results/class_to_position.csv", "results/label_quality.csv",
-                "results/instance_counts.csv", "manifests/fdi_evaluable.txt"):
+                "results/instance_counts.csv", "manifests/fdi_evaluable.txt",
+                # exact train/test overlap per model: computed here because the
+                # bundle ships no training data, read by coco_eval for the
+                # contamination column
+                "results/train_test_overlap.json"):
         src = os.path.join(ROOT, "paper_eval", sub)
         if not os.path.exists(src):
             continue
         dst = os.path.join(CODE_BUNDLE, "paper_eval", sub)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy2(src, dst); total += os.path.getsize(src); n += 1
+
+    # The 9-class annotations for the same 716 images. 7.8 MB, so they ride
+    # here rather than forcing a 2 GB re-upload of the data bundle.
+    nine = os.path.join(ROOT, "data", "final-di-remapped", "test",
+                        "_annotations.coco.json")
+    if os.path.exists(nine):
+        dst = os.path.join(CODE_BUNDLE, "annotations9", "_annotations.coco.json")
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(nine, dst)
+        total += os.path.getsize(nine); n += 1
 
     rec = write_provenance(os.path.join(CODE_BUNDLE, "paper_eval"))
     print(f"  stamped git: {rec['git']}")

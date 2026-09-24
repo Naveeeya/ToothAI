@@ -42,6 +42,7 @@ Usage:
 """
 import argparse
 import csv
+import json
 import os
 import statistics
 import subprocess
@@ -56,6 +57,25 @@ import evalkit as K
 import pipeline as P
 
 RESULTS = os.path.join(K.ROOT, "paper_eval", "results")
+
+
+def _load_leakage():
+    """Exact train/test image overlap per model.
+
+    Computed on the workstation (the bundle ships only test data) and shipped
+    as JSON. A model that saw test images in training is optimistic on this
+    split and every row it produces is indicative only.
+    """
+    p = os.path.join(RESULTS, "train_test_overlap.json")
+    try:
+        with open(p) as fh:
+            return {k: v for k, v in json.load(fh).items()
+                    if not k.startswith("_")}
+    except Exception:
+        return {}
+
+
+LEAKAGE = _load_leakage()
 
 RUNNABLE = ["single_pass", "full", "full_fix_routing", "no_zone_threshold", "nms"]
 
@@ -207,7 +227,8 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
         fix_cls_routing = True
     acc = {
         "recall_full": [], "recall_anom": [],
-        "central_full": [],
+        "central_full": [], "periph_full": [],
+        "per_image": [],
         "fdi_canonical": [], "fdi_fullarch": [],
         "jaw": [], "offsets": Counter(),
         "mask_ious": [], "pre_prune": [], "final": [], "pruned": 0,
@@ -235,18 +256,24 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
 
         n_hit = n_tot = 0
         n_chit = n_ctot = 0
+        n_phit = n_ptot = 0
         for gt, pred, iou in pairs:
             n_tot += 1
             central = K.is_central(gt["bbox"], meta["width"])
             n_ctot += int(central)
+            n_ptot += int(not central)
             if pred is not None:
                 n_hit += 1
                 n_chit += int(central)
+                n_phit += int(not central)
                 acc["mask_ious"].append(iou)
 
         in_fa = iid in manifests["full_arch"]
         if in_fa:
             acc["recall_full"].append((n_hit, n_tot))
+            # Peripheral recall alongside central, so the two can be compared
+            # directly on identical images.
+            acc["periph_full"].append((n_phit, n_ptot))
             # Central-zone recall comes ONLY from full-arch images: it is the
             # paper's core claim, and a complete arch is the only case where an
             # absent label means an absent tooth rather than an unannotated one.
@@ -260,6 +287,10 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
         in_canon = iid in manifests["canonical"]
         in_fdi = iid in manifests["fdi_evaluable"]
         in_full = iid in manifests["full_arch"]
+        # Reset every iteration. Python scopes these to the function, so an
+        # image that skips the block below would otherwise silently inherit
+        # the previous image's counts into its per-image row.
+        fdi_hit = fdi_tot = jaw_hit = jaw_tot = None
         if in_canon or in_full:
             fdi_hit = fdi_tot = jaw_hit = jaw_tot = 0
             for gt, pred, iou in pairs:
@@ -299,6 +330,23 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
                 if pred is not None:
                     acc["per_tooth"][true_fdi][0] += 1
 
+        # One row per image, so paired (per-image) deltas between configs can
+        # be bootstrapped later. Marginal CIs that overlap neither establish
+        # nor refute a difference; only the paired delta does.
+        acc["per_image"].append({
+            "image_id": iid, "config": config,
+            "full_arch": int(in_fa), "canonical": int(in_canon),
+            "fdi_evaluable": int(in_fdi),
+            "sparse": int(iid in manifests["sparse"]),
+            "recall_hit": n_hit, "recall_tot": n_tot,
+            "central_hit": n_chit, "central_tot": n_ctot,
+            "periph_hit": n_phit, "periph_tot": n_ptot,
+            "fdi_hit": "" if fdi_hit is None else fdi_hit,
+            "fdi_tot": "" if fdi_tot is None else fdi_tot,
+            "jaw_hit": "" if jaw_hit is None else jaw_hit,
+            "jaw_tot": "" if jaw_tot is None else jaw_tot,
+            "pred_preprune": pre, "pred_final": len(teeth),
+        })
         if n % 25 == 0:
             print(f"    {config}: {n}/{len(ids)}", flush=True)
     return acc
@@ -455,14 +503,33 @@ def coco_eval(model_dirs, limit=None):
         ev = COCOEvaluator(ds, output_dir=os.path.join(RESULTS, f"coco_{name}"))
         loader = build_detection_test_loader(pred.cfg, ds)
         res = inference_on_dataset(pred.model, loader, ev)
+
+        # Overall AP is dominated by Filling (2,504 instances vs ~150 per tooth
+        # position), so it does not answer "can this model number teeth?".
+        # Report the tooth signal on its own: mean over the 32 position classes
+        # for a 41-class model, AP-Tooth for the 9-class one.
+        segm = res.get("segm", {})
+        pos = [v for k, v in segm.items()
+               if k.startswith("AP-") and k[3:].isdigit() and v == v]
+        generic = segm.get("AP-Tooth")
+        leak = LEAKAGE.get(name, {})
         rows.append({
             "model": name,
+            "annotations_used": os.path.relpath(ann, K.ROOT),
             "min_size_test": mn, "max_size_test": mx,
             "min_size_test_yaml": mn_yaml, "max_size_test_yaml": mx_yaml,
-            "num_classes": pred.cfg.MODEL.ROI_HEADS.NUM_CLASSES,
-            "segm_AP": res.get("segm", {}).get("AP"),
-            "segm_AP50": res.get("segm", {}).get("AP50"),
+            "num_classes": nc,
+            "segm_AP": segm.get("AP"),
+            "segm_AP50": segm.get("AP50"),
             "bbox_AP": res.get("bbox", {}).get("AP"),
+            "mean_AP_tooth_positions": (sum(pos) / len(pos)) if pos else None,
+            "n_tooth_position_classes": len(pos),
+            "generic_AP_Tooth": generic,
+            "train_images": leak.get("train_images"),
+            "test_overlap_images": leak.get("overlap_with_test"),
+            "test_overlap_pct": leak.get("overlap_pct"),
+            "contaminated": ("YES" if (leak.get("overlap_with_test") or 0) > 0
+                             else "no"),
             "sha256": K.sha256_file(os.path.join(md, "model_final.pth")),
         })
     return rows
@@ -508,6 +575,8 @@ def write_ablation(rows, extra_header=()):
             "recall_anomaly_bearing_teeth_hi", "recall_anomaly_bearing_teeth_n",
             "central_recall_fullarch", "central_recall_fullarch_lo",
             "central_recall_fullarch_hi", "central_recall_fullarch_n",
+            "peripheral_recall_fullarch", "peripheral_recall_fullarch_lo",
+            "peripheral_recall_fullarch_hi",
             "fdi_acc_canonical", "fdi_acc_canonical_lo", "fdi_acc_canonical_hi", "fdi_canonical_n",
             "fdi_acc_fullarch", "fdi_acc_fullarch_lo", "fdi_acc_fullarch_hi", "fdi_fullarch_n",
             "jaw_acc", "jaw_acc_lo", "jaw_acc_hi", "jaw_n",
@@ -565,6 +634,27 @@ def write_sweep(taus, per):
             npi = statistics.mean(per[t]["n"]) if per[t]["n"] else float("nan")
             w.writerow([t, round(max(t * 0.7, 0.08), 4),
                         f"{c:.6f}", f"{pr:.6f}", f"{npi:.4f}"])
+    return p
+
+
+def write_per_image(rows_by_config, extra=()):
+    """Per-image metrics for every config -- the input to paired deltas."""
+    p = os.path.join(RESULTS, "per_image.csv")
+    cols = ["image_id", "config", "full_arch", "canonical", "fdi_evaluable",
+            "sparse", "recall_hit", "recall_tot", "central_hit", "central_tot",
+            "periph_hit", "periph_tot", "fdi_hit", "fdi_tot", "jaw_hit",
+            "jaw_tot", "pred_preprune", "pred_final"]
+    with open(p, "w", newline="") as fh:
+        for line in K.provenance_header(list(extra) + [
+                "one row per (image, config). Every config ran on the SAME",
+                "images in the same order, so these rows are PAIRED and a",
+                "difference between two configs must be bootstrapped as a",
+                "per-image delta, not inferred from overlapping marginal CIs."]):
+            fh.write(line + "\n")
+        w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        for cfg in rows_by_config:
+            w.writerows(rows_by_config[cfg])
     return p
 
 
@@ -703,7 +793,7 @@ def main():
                    n_images=5 if limit else 12)
 
     # ---- STAGE 1: the ablation. FIRST, and written as soon as it is done --
-    rows, per_tooth, offsets = [], {}, {}
+    rows, per_tooth, offsets, per_image = [], {}, {}, {}
     for cfg in configs:
         print(f"\n--- {cfg} ---", flush=True)
         acc = evaluate(cfg, predictor, images, gt_teeth, manifests, class_map,
@@ -712,6 +802,7 @@ def main():
         for key, srcname in (("recall_fullarch", "recall_full"),
                              ("recall_anomaly_bearing_teeth", "recall_anom"),
                              ("central_recall_fullarch", "central_full"),
+                             ("peripheral_recall_fullarch", "periph_full"),
                              ("fdi_acc_canonical", "fdi_canonical"),
                              ("fdi_acc_fullarch", "fdi_fullarch"),
                              ("jaw_acc", "jaw")):
@@ -741,6 +832,7 @@ def main():
                 r["latency_n"] = lat["n"]
         rows.append(r)
         offsets[cfg] = acc["offsets"]
+        per_image[cfg] = acc["per_image"]
         if cfg in ("single_pass", "full"):
             per_tooth["ensemble" if cfg == "full" else cfg] = \
                 {k: tuple(v) for k, v in acc["per_tooth"].items()}
@@ -754,6 +846,8 @@ def main():
             write_per_tooth(per_tooth)
         if offsets:
             write_offsets(offsets)
+        if per_image:
+            write_per_image(per_image, extra)
         print(f"    [checkpointed {len(rows)}/{len(configs)} configs to results/]",
               flush=True)
 
@@ -765,6 +859,8 @@ def main():
             print("wrote", write_per_tooth(per_tooth))
         if offsets:
             print("wrote", write_offsets(offsets))
+        if per_image:
+            print("wrote", write_per_image(per_image, extra))
         summarise(rows)
 
     # ---- STAGE 2: tau sweep ----------------------------------------------
