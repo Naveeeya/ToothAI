@@ -284,6 +284,41 @@ affected.
 
 ---
 
+## 5.7b Network numbering versus detection plus geometry
+
+The design question behind the whole paper is whether a network should predict
+FDI numbers directly or whether a generic tooth detector plus a geometric
+engine should assign them. The COCO comparison in section 2 cannot settle it:
+one generic class is intrinsically easier to score than 32, so a higher
+`AP-Tooth` than mean-AP-over-positions is expected regardless of how good the
+numbering is.
+
+Measured the same way on both sides instead -- FDI accuracy, the same 117
+canonical images, the same mask-IoU >= 0.5 matching, the same denominator, the
+same score threshold (tau = 0.20), and winner-takes-all deduplication per FDI
+on both sides so neither gets a free pass on duplicates:
+
+| method | FDI accuracy | paired delta vs network |
+|---|---|---|
+| detection + geometry (`single_pass`) | **64.5%** | **+20.03 pp** [+13.59, +26.21] |
+| detection + geometry (`full`) | 60.9% | +16.38 pp [+10.04, +22.70] |
+| network numbering (`resnext101_cascade_60k`, classes 1-32) | **44.5%** [41.1, 47.8] | — |
+
+`single_pass` beats the network on **77 of 117** images, loses on 32, ties on
+8. The geometric engine -- a y-median split and a left-to-right sort, with all
+the flaws documented in 5.1 and 5.2 -- numbers teeth about 20 percentage points
+more accurately than a 41-class Cascade R-CNN trained to do it directly.
+
+Why the network struggles is visible in its own output. At tau = 0.20 it emits
+**57.3** tooth-class detections per image against a maximum of 32 real teeth,
+and winner-takes-all deduplication discards **30.3** of them per image as
+duplicate FDI claims. It is not confidently assigning positions; it is
+proposing many positions per tooth and relying on the tie-break.
+
+This is the result that justifies the deployed architecture. The paper should
+report it, because the architecture is currently justified in the draft by a
+class count that does not match the code.
+
 ## 5.8 The central zone is the EASY zone
 
 The system's central-relaxation rule exists because the spinal shadow is

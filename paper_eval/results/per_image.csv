@@ -3,21 +3,14 @@
 # teeth model:   output/resnet50_9class_20k/model_final.pth
 #   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
 #   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
-# git: 3be0f5c8076018aa64bb4900c3f0cd539db7c145+dirty (stamped at bundle build 2026-09-24T21:09:12+00:00)
+# git: b59243b13dd345fae7423638307a1739af264549+dirty (stamped at bundle build 2026-09-25T01:34:15+00:00)
 # gpu: Tesla T4
 # seed: 20260921   bootstrap resamples: 10000
 # NOTE: recall only. With a median of 8 labelled teeth per image, an
 #   unlabelled but correctly detected tooth scores as a false positive,
 #   so precision and FP/image are NOT meaningful on this ground truth.
-# fix_cls_routing=False
-# CUDA_VISIBLE_DEVICES=0
-# torch_device_0=Tesla T4
-# nvidia_smi_row0=0, Tesla T4, GPU-f7ed8e84-eef9-f73d-9c27-adc0171d2f7a
-# teeth cfg.INPUT MIN/MAX_SIZE_TEST=(800, 1333)
-# one row per (image, config). Every config ran on the SAME
-# images in the same order, so these rows are PAIRED and a
-# difference between two configs must be bootstrapped as a
-# per-image delta, not inferred from overlapping marginal CIs.
+# network_numbering rows from resnext101_cascade_60k
+# one row per (image, config); configs are PAIRED on image_id
 image_id,config,full_arch,canonical,fdi_evaluable,sparse,recall_hit,recall_tot,central_hit,central_tot,periph_hit,periph_tot,fdi_hit,fdi_tot,jaw_hit,jaw_tot,pred_preprune,pred_final
 1,single_pass,1,1,1,0,31,32,16,16,15,16,22,32,30,31,33,31
 2,single_pass,0,0,0,1,6,6,0,0,6,6,,,,,13,13
@@ -3259,3 +3252,120 @@ image_id,config,full_arch,canonical,fdi_evaluable,sparse,recall_hit,recall_tot,c
 714,nms,1,0,0,0,31,32,18,18,13,14,1,32,18,31,33,32
 715,nms,0,0,0,1,7,7,0,0,7,7,,,,,9,9
 716,nms,0,0,0,1,8,8,0,0,8,8,,,,,19,19
+1,network_numbering,1,1,1,0,,,,,,,15,32,,,61,30
+5,network_numbering,1,1,1,0,,,,,,,17,32,,,65,29
+18,network_numbering,1,1,1,0,,,,,,,16,32,,,63,30
+32,network_numbering,1,1,1,0,,,,,,,12,32,,,63,27
+43,network_numbering,1,1,1,0,,,,,,,6,32,,,59,24
+47,network_numbering,0,1,0,0,,,,,,,17,30,,,54,30
+49,network_numbering,1,1,1,0,,,,,,,17,32,,,63,30
+62,network_numbering,0,1,0,0,,,,,,,15,26,,,50,25
+74,network_numbering,1,1,1,0,,,,,,,18,32,,,65,30
+79,network_numbering,0,1,0,0,,,,,,,22,29,,,67,30
+84,network_numbering,0,1,0,0,,,,,,,7,17,,,26,16
+85,network_numbering,1,1,1,0,,,,,,,11,32,,,59,26
+91,network_numbering,1,1,1,0,,,,,,,17,32,,,72,31
+92,network_numbering,0,1,0,1,,,,,,,2,3,,,7,5
+95,network_numbering,1,1,1,0,,,,,,,7,32,,,69,32
+97,network_numbering,1,1,1,0,,,,,,,18,32,,,64,32
+102,network_numbering,1,1,1,0,,,,,,,6,32,,,58,26
+110,network_numbering,1,1,1,0,,,,,,,13,32,,,50,24
+130,network_numbering,1,1,1,0,,,,,,,16,32,,,67,29
+138,network_numbering,0,1,0,0,,,,,,,11,20,,,42,23
+143,network_numbering,1,1,1,0,,,,,,,23,32,,,70,30
+155,network_numbering,0,1,0,1,,,,,,,0,1,,,0,0
+158,network_numbering,1,1,1,0,,,,,,,14,32,,,55,26
+160,network_numbering,0,1,0,0,,,,,,,6,29,,,56,24
+162,network_numbering,1,1,1,0,,,,,,,21,32,,,65,30
+164,network_numbering,1,1,1,0,,,,,,,27,32,,,69,31
+166,network_numbering,0,1,0,0,,,,,,,3,28,,,65,30
+173,network_numbering,1,1,1,0,,,,,,,14,32,,,61,27
+175,network_numbering,0,1,0,0,,,,,,,14,29,,,63,27
+176,network_numbering,0,1,0,0,,,,,,,9,26,,,48,25
+183,network_numbering,1,1,1,0,,,,,,,13,32,,,59,24
+190,network_numbering,0,1,0,0,,,,,,,10,24,,,51,24
+191,network_numbering,0,1,0,1,,,,,,,0,3,,,5,3
+198,network_numbering,1,1,1,0,,,,,,,25,32,,,68,31
+203,network_numbering,1,1,1,0,,,,,,,20,32,,,66,30
+206,network_numbering,1,1,1,0,,,,,,,4,32,,,69,29
+215,network_numbering,0,1,0,0,,,,,,,6,31,,,63,27
+222,network_numbering,0,1,0,0,,,,,,,16,30,,,51,24
+236,network_numbering,1,1,1,0,,,,,,,18,32,,,57,28
+249,network_numbering,1,1,1,0,,,,,,,16,32,,,59,29
+253,network_numbering,0,1,0,0,,,,,,,5,24,,,52,24
+255,network_numbering,0,1,0,0,,,,,,,2,19,,,34,21
+266,network_numbering,1,1,1,0,,,,,,,15,32,,,58,27
+269,network_numbering,0,1,0,0,,,,,,,18,31,,,60,27
+274,network_numbering,1,1,1,0,,,,,,,20,32,,,57,31
+280,network_numbering,1,1,1,0,,,,,,,10,32,,,63,28
+286,network_numbering,0,1,0,0,,,,,,,17,29,,,53,27
+293,network_numbering,0,1,0,0,,,,,,,17,28,,,54,27
+295,network_numbering,1,1,1,0,,,,,,,8,32,,,64,29
+305,network_numbering,1,1,1,0,,,,,,,9,32,,,72,31
+308,network_numbering,0,1,0,0,,,,,,,10,26,,,56,25
+312,network_numbering,0,1,0,0,,,,,,,23,31,,,62,31
+313,network_numbering,1,1,1,0,,,,,,,2,32,,,67,32
+320,network_numbering,1,1,1,0,,,,,,,6,32,,,67,30
+329,network_numbering,0,1,0,0,,,,,,,13,27,,,60,27
+333,network_numbering,1,1,1,0,,,,,,,14,32,,,58,27
+335,network_numbering,1,1,1,0,,,,,,,10,32,,,68,30
+337,network_numbering,0,1,0,1,,,,,,,4,10,,,19,11
+343,network_numbering,0,1,0,0,,,,,,,15,27,,,60,29
+349,network_numbering,1,1,1,0,,,,,,,11,32,,,57,25
+354,network_numbering,1,1,1,0,,,,,,,12,32,,,59,26
+355,network_numbering,0,1,0,0,,,,,,,15,31,,,61,30
+362,network_numbering,1,1,1,0,,,,,,,21,32,,,64,30
+378,network_numbering,0,1,0,0,,,,,,,11,30,,,53,29
+379,network_numbering,1,1,1,0,,,,,,,10,32,,,58,28
+380,network_numbering,1,1,1,0,,,,,,,19,32,,,65,32
+383,network_numbering,1,1,1,0,,,,,,,17,32,,,64,30
+389,network_numbering,0,1,0,0,,,,,,,5,24,,,49,25
+390,network_numbering,1,1,1,0,,,,,,,16,32,,,65,31
+400,network_numbering,1,1,1,0,,,,,,,21,32,,,66,32
+401,network_numbering,0,1,0,0,,,,,,,20,28,,,60,28
+405,network_numbering,1,1,1,0,,,,,,,18,32,,,68,29
+423,network_numbering,1,1,1,0,,,,,,,16,32,,,67,31
+431,network_numbering,0,1,0,0,,,,,,,13,31,,,63,29
+448,network_numbering,1,1,1,0,,,,,,,24,32,,,62,32
+450,network_numbering,1,1,1,0,,,,,,,20,32,,,64,30
+457,network_numbering,0,1,0,0,,,,,,,11,28,,,55,23
+463,network_numbering,0,1,0,0,,,,,,,18,31,,,67,30
+465,network_numbering,0,1,0,1,,,,,,,0,3,,,11,9
+470,network_numbering,0,1,0,0,,,,,,,11,26,,,58,28
+474,network_numbering,0,1,0,0,,,,,,,10,30,,,59,28
+481,network_numbering,0,1,0,0,,,,,,,14,28,,,60,29
+487,network_numbering,0,1,0,0,,,,,,,12,31,,,64,29
+490,network_numbering,1,1,1,0,,,,,,,15,32,,,61,30
+491,network_numbering,1,1,1,0,,,,,,,3,32,,,56,25
+507,network_numbering,0,1,0,0,,,,,,,15,17,,,33,21
+518,network_numbering,1,1,1,0,,,,,,,10,32,,,77,31
+534,network_numbering,1,1,1,0,,,,,,,16,32,,,70,30
+536,network_numbering,1,1,1,0,,,,,,,3,32,,,62,27
+541,network_numbering,0,1,0,0,,,,,,,5,24,,,40,20
+543,network_numbering,0,1,0,0,,,,,,,16,17,,,36,22
+544,network_numbering,1,1,1,0,,,,,,,10,32,,,55,26
+545,network_numbering,1,1,1,0,,,,,,,18,32,,,64,30
+560,network_numbering,0,1,0,0,,,,,,,3,24,,,60,27
+561,network_numbering,0,1,0,0,,,,,,,21,30,,,55,29
+565,network_numbering,1,1,1,0,,,,,,,14,32,,,62,25
+567,network_numbering,0,1,0,0,,,,,,,11,25,,,47,24
+569,network_numbering,0,1,0,0,,,,,,,15,23,,,42,23
+570,network_numbering,0,1,0,0,,,,,,,11,29,,,60,30
+571,network_numbering,1,1,1,0,,,,,,,8,32,,,68,32
+589,network_numbering,1,1,1,0,,,,,,,7,32,,,65,29
+591,network_numbering,0,1,0,0,,,,,,,6,25,,,56,29
+593,network_numbering,0,1,0,0,,,,,,,14,23,,,42,23
+607,network_numbering,0,1,0,0,,,,,,,11,28,,,55,27
+615,network_numbering,0,1,0,0,,,,,,,22,31,,,68,31
+634,network_numbering,1,1,1,0,,,,,,,12,32,,,62,29
+641,network_numbering,1,1,1,0,,,,,,,6,32,,,52,24
+644,network_numbering,0,1,0,0,,,,,,,19,31,,,60,29
+650,network_numbering,1,1,1,0,,,,,,,18,32,,,57,30
+665,network_numbering,1,1,1,0,,,,,,,14,32,,,60,23
+666,network_numbering,1,1,1,0,,,,,,,15,32,,,64,30
+670,network_numbering,1,1,1,0,,,,,,,19,32,,,65,32
+672,network_numbering,1,1,1,0,,,,,,,15,32,,,61,29
+674,network_numbering,1,1,1,0,,,,,,,11,32,,,66,30
+688,network_numbering,1,1,1,0,,,,,,,11,32,,,62,28
+694,network_numbering,1,1,1,0,,,,,,,3,32,,,65,31
+699,network_numbering,1,1,1,0,,,,,,,17,32,,,64,29
