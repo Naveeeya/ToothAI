@@ -497,10 +497,49 @@ other 26 are **wholesale relabellings**, not an orientation convention:
 a near-miss explainable by adjacent swaps. There is no single alternative
 convention to remap them to.
 
-**Jaw membership, however, is preserved in all 26** — the same 16 classes are
-upper in every full-arch image. So class→jaw is reliable across all 93 even
-though class→position is not, which is why jaw-assignment accuracy is scored on
-93 images and FDI accuracy on 67.
+**CORRECTION (this round). Jaw membership is *not* preserved.** An earlier
+version of this section claimed the same 16 classes were upper in every
+full-arch image, and therefore scored jaw accuracy on all 93. That claim was
+asserted, never checked by code, and it is wrong.
+
+`check_jaw_membership.py` splits each full-arch image's ground-truth boxes at
+the y-median of their own centres — the same rule `split_jaws` uses
+(`app.py:82-104`) — and asks which class ids land upper. No model is involved.
+
+| subset | ground-truth label jaw matches geometry |
+|---|---|
+| canonical full-arch (n=67) | 2,144 / 2,144 = **100.0%** |
+| non-canonical full-arch (n=26) | 482 / 832 = **57.9%** |
+| all full-arch (n=93) | 2,626 / 2,976 = 88.2% |
+
+**25 of the 26** share a single alternative jaw partition whose upper set is
+`{1,2,3,4,5,6,7,8,12,23,27,28,29,30,31,32}` — overlapping the canonical upper
+set in only **9 of 16** classes. The 26th is canonical at the jaw level and
+scrambled only within jaws.
+
+So there *is* a second convention in this dataset, consistent at the jaw level
+across 25 images, even though within-jaw ordering varies over 18 distinct
+orderings. Class→jaw is reliable on canonical images and on those alone.
+
+**What this invalidates.** The jaw accuracy of **87.2%** previously reported on
+93 images is not a model result — it is 99% on the images whose labels are
+right and 57% on the images whose labels put the tooth in the other jaw.
+Measured on the same detections:
+
+| subset | jaw accuracy given detection (`single_pass`) |
+|---|---|
+| canonical (n=117) | **97.9%** [97.3, 98.5] |
+| canonical full-arch (n=67) | **98.96%** |
+| non-canonical full-arch (n=26) | 57.2% — label noise, not model error |
+| all full-arch (n=93) | 87.2% — **do not quote** |
+
+The jaw figure to quote is **97.9% on 117 canonical images**. `ablation.csv`
+now carries both columns, the confounded one named as such.
+
+This surfaced only because the FDI decomposition put detection, jaw and
+numbering on one denominator (§6.1b). It is the second claim this round that
+did not survive being recomputed rather than restated; the first was the
+smoothness claim in §5.8.
 
 Over the whole split:
 

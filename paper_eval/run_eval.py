@@ -27,9 +27,15 @@ SUBSETS (each justified by a different ground-truth property)
                       box, vs 0.0% of full-arch ones)
     fdi accuracy      117 canonical images (headline, includes missing teeth)
                       and 67 full-arch canonical images (clean-label bound)
-    jaw accuracy      all 93 full-arch images -- jaw membership is consistent
-                      in every one, including the 26 whose within-jaw ordering
-                      is scrambled
+    jaw accuracy      117 canonical images. An earlier version scored this on
+                      all 93 full-arch images, on the claim that class->jaw was
+                      consistent even where class->position was scrambled. That
+                      claim was wrong: 25 of the 26 non-canonical full-arch
+                      images use a different jaw partition, overlapping the
+                      canonical upper set in 9 of 16 classes
+                      (check_jaw_membership.py). The 93-image figure is kept
+                      under jaw_acc_fullarch_confounded and should not be
+                      quoted as a model result.
     offset histogram  117 canonical images, which include 50 partial arches
                       where a missing third molar can actually shift the jaw
 
@@ -230,7 +236,7 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
         "central_full": [], "periph_full": [],
         "per_image": [],
         "fdi_canonical": [], "fdi_fullarch": [],
-        "jaw": [], "offsets": Counter(),
+        "jaw": [], "jaw_canonical": [], "offsets": Counter(),
         "mask_ious": [], "pre_prune": [], "final": [], "pruned": 0,
         "per_tooth": defaultdict(lambda: [0, 0]),
     }
@@ -316,6 +322,12 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
                 acc["fdi_canonical"].append((fdi_hit, fdi_tot))
             if in_fdi:
                 acc["fdi_fullarch"].append((fdi_hit, fdi_tot))
+            if in_canon:
+                # The headline jaw figure. class->jaw is NOT reliable on the 26
+                # non-canonical full-arch images: 25 of them use a different
+                # jaw partition (check_jaw_membership.py), so jaw accuracy over
+                # all 93 measures annotation convention as much as the model.
+                acc["jaw_canonical"].append((jaw_hit, jaw_tot))
             if in_full:
                 acc["jaw"].append((jaw_hit, jaw_tot))
 
@@ -354,15 +366,15 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
 
 # --------------------------------------------------------------------------
 def network_numbering(predictor, images, gt_teeth, manifests, class_map,
-                      subset="canonical", tau=TEETH_TAU, limit=None):
+                      subset="canonical", taus=(TEETH_TAU, 0.05), limit=None):
     """Score a 41-class model's OWN tooth numbering, end to end.
 
     The COCO comparison cannot settle the design question: one generic class
     is intrinsically easier to score than 32, so a higher AP-Tooth than
     mean-AP-over-positions is expected whatever the numbering is worth.
 
-    This measures the same thing both ways instead -- FDI accuracy on the same
-    images, same matching rule, same denominator:
+    This measures the same thing both ways instead -- same images, same
+    matching rule, same denominator:
 
       network   the 41-class model's predicted class 1..32, mapped to an FDI
                 through the empirical class_to_position table. No geometric
@@ -370,19 +382,45 @@ def network_numbering(predictor, images, gt_teeth, manifests, class_map,
       geometry  the deployed pipeline: one generic Tooth class, then y-median
                 jaw split and left-to-right ordering.
 
-    Detections are thresholded at the same tau the deployed pipeline uses, and
-    duplicate FDIs are resolved winner-takes-all by score, mirroring
+    Duplicate FDIs are resolved winner-takes-all by score, mirroring
     resolve_fdi_conflicts so neither side gets a free pass on duplicates.
+
+    Three things are recorded that the first version did not:
+
+    1. DETECTION SEPARATELY FROM NUMBERING. Geometry detects with the 9-class
+       model and the network detects with the Cascade, so a joint score
+       (correct FDI / all ground-truth teeth) confounds two detectors with two
+       numbering schemes. recall_hit / jaw_hit are written per image so the
+       conditional "numbering accuracy given the tooth was found" can be
+       computed on the same rows.
+
+    2. A MAPPING-FREE CONTROL. class_to_position was derived from this split,
+       so a sceptic can ask whether the result depends on it. The control runs
+       a fully independent pipeline -- dedup keyed on the raw class id, its own
+       matching pass, correct iff predicted class id == ground-truth category
+       id -- and never consults class_map at all. The mapping is a bijection,
+       so the two must agree on every image; the point is to demonstrate it
+       rather than assert it.
+
+    3. MORE THAN ONE THRESHOLD. Per-image rows are kept at the network's own
+       optimum as well as at the deployed tau, so the paired delta against
+       geometry can be taken where the baseline is strongest.
     """
     import cv2
     ids = sorted(i for i in gt_teeth if i in manifests[subset])
     if limit:
         ids = ids[:limit]
-    print(f"  scoring network numbering on {len(ids)} {subset} images, tau={tau}")
+    taus = list(taus)
+    print(f"  scoring network numbering on {len(ids)} {subset} images, "
+          f"taus={taus}")
 
     # class_map is class_id -> (jaw, rank, fdi); invert to what a prediction means
     cls_to_fdi = {c: fdi for c, (_j, _r, fdi) in class_map.items()}
-    rows, per_img = [], []
+    per_img = {t: [] for t in taus}
+    agg = {t: {"det": [], "jaw": [], "cond": [], "joint": [],
+               "mapfree": [], "cand": [], "final": [],
+               "disagree_images": 0} for t in taus}
+
     for n, iid in enumerate(ids, 1):
         meta = images[iid]
         img = cv2.imread(os.path.join(K.SPLIT_DIR, meta["file_name"]))
@@ -390,54 +428,138 @@ def network_numbering(predictor, images, gt_teeth, manifests, class_map,
             continue
         h, w = img.shape[:2]
         predictor.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
-        out = predictor(img)
-        inst = out["instances"].to("cpu")
+        inst = predictor(img)["instances"].to("cpu")
         boxes = inst.pred_boxes.tensor.numpy()
         scores = inst.scores.numpy()
         classes = inst.pred_classes.numpy()
         masks = inst.pred_masks.numpy() if inst.has("pred_masks") else None
-
-        cand = []
-        for i in range(len(inst)):
-            c = int(classes[i])
-            if c not in cls_to_fdi or float(scores[i]) < tau:
-                continue                       # class 0 't' and 33-40 anomalies
-            cand.append({"box": boxes[i].tolist(), "score": float(scores[i]),
-                         "fdi": cls_to_fdi[c],
-                         "mask": masks[i] if masks is not None else None})
-        # winner-takes-all per FDI, as resolve_fdi_conflicts does
-        best = {}
-        for d in sorted(cand, key=lambda d: -d["score"]):
-            best.setdefault(d["fdi"], d)
-        preds = list(best.values())
-
         gts = gt_teeth[iid]
-        pairs = K.match_detections(gts, preds, h, w)
-        hit = tot = 0
-        for gt, pred, _iou in pairs:
-            _jaw, _rank, true_fdi = class_map[gt["category_id"]]
-            tot += 1
-            if pred is not None and pred.get("fdi") == true_fdi:
-                hit += 1
-        per_img.append({"image_id": iid, "config": "network_numbering",
-                        "full_arch": int(iid in manifests["full_arch"]),
-                        "canonical": int(iid in manifests["canonical"]),
-                        "fdi_evaluable": int(iid in manifests["fdi_evaluable"]),
-                        "sparse": int(iid in manifests["sparse"]),
-                        "recall_hit": "", "recall_tot": "",
-                        "central_hit": "", "central_tot": "",
-                        "periph_hit": "", "periph_tot": "",
-                        "fdi_hit": hit, "fdi_tot": tot,
-                        "jaw_hit": "", "jaw_tot": "",
-                        "pred_preprune": len(cand), "pred_final": len(preds)})
-        rows.append((hit, tot))
+        gtm = K.gt_masks_for(gts, h, w)       # decode GT once, not per tau
+
+        for tau in taus:
+            cand = []
+            for i in range(len(inst)):
+                c = int(classes[i])
+                if c not in cls_to_fdi or float(scores[i]) < tau:
+                    continue                   # class 0 't' and 33-40 anomalies
+                cand.append({"box": boxes[i].tolist(), "score": float(scores[i]),
+                             "cls": c, "fdi": cls_to_fdi[c],
+                             "mask": masks[i] if masks is not None else None})
+
+            # --- mapped path: dedup per FDI, score against the mapped FDI ---
+            best = {}
+            for d in sorted(cand, key=lambda d: -d["score"]):
+                best.setdefault(d["fdi"], d)
+            preds = list(best.values())
+            pairs = K.match_detections(gts, preds, h, w, gt_masks=gtm)
+
+            det_hit = fdi_hit = jaw_hit = 0
+            tot = len(pairs)
+            for gt, pred, _iou in pairs:
+                jaw, _rank, true_fdi = class_map[gt["category_id"]]
+                if pred is None:
+                    continue
+                det_hit += 1
+                if pred["fdi"] == true_fdi:
+                    fdi_hit += 1
+                pred_jaw = "upper" if pred["fdi"] in K.FDI_UPPER else "lower"
+                jaw_hit += int(pred_jaw == jaw)
+
+            # --- mapping-free control: never consults class_map -------------
+            mbest = {}
+            for d in sorted(cand, key=lambda d: -d["score"]):
+                mbest.setdefault(d["cls"], d)
+            mpreds = list(mbest.values())
+            mpairs = K.match_detections(gts, mpreds, h, w, gt_masks=gtm)
+            map_hit = sum(1 for gt, pred, _i in mpairs
+                          if pred is not None and pred["cls"] == gt["category_id"])
+            if map_hit != fdi_hit:
+                agg[tau]["disagree_images"] += 1
+
+            a = agg[tau]
+            a["det"].append((det_hit, tot))
+            a["joint"].append((fdi_hit, tot))
+            a["cond"].append((fdi_hit, det_hit))
+            a["jaw"].append((jaw_hit, det_hit))
+            a["mapfree"].append((map_hit, tot))
+            a["cand"].append(len(cand))
+            a["final"].append(len(preds))
+
+            per_img[tau].append({
+                "image_id": iid, "config": _nn_name(tau),
+                "full_arch": int(iid in manifests["full_arch"]),
+                "canonical": int(iid in manifests["canonical"]),
+                "fdi_evaluable": int(iid in manifests["fdi_evaluable"]),
+                "sparse": int(iid in manifests["sparse"]),
+                "recall_hit": det_hit, "recall_tot": tot,
+                "central_hit": "", "central_tot": "",
+                "periph_hit": "", "periph_tot": "",
+                "fdi_hit": fdi_hit, "fdi_tot": tot,
+                "jaw_hit": jaw_hit, "jaw_tot": det_hit,
+                "pred_preprune": len(cand), "pred_final": len(preds)})
         if n % 25 == 0:
             print(f"    network_numbering: {n}/{len(ids)}", flush=True)
 
-    v, lo, hi = K.bootstrap_ci(rows)
-    print(f"\n  network numbering FDI accuracy: {v*100:.1f}% "
-          f"[{lo*100:.1f}, {hi*100:.1f}]  n={len(rows)} images")
-    return per_img, (v, lo, hi)
+    out = []
+    for tau in taus:
+        a = agg[tau]
+        r = {"config": _nn_name(tau), "tau": tau, "n_images": len(a["det"]),
+             "gt_teeth": sum(y for _, y in a["det"]),
+             "matched": sum(x for x, _ in a["det"])}
+        for key, src in (("detection_recall", "det"),
+                         ("jaw_acc_given_detected", "jaw"),
+                         ("fdi_acc_given_detected", "cond"),
+                         ("fdi_acc_joint", "joint"),
+                         ("fdi_acc_joint_mapping_free", "mapfree")):
+            v, lo, hi = K.bootstrap_ci(a[src])
+            r[key], r[key + "_lo"], r[key + "_hi"] = v, lo, hi
+        r["mapping_free_disagreements"] = a["disagree_images"]
+        r["detections_per_image"] = (statistics.mean(a["cand"])
+                                     if a["cand"] else float("nan"))
+        r["after_dedup_per_image"] = (statistics.mean(a["final"])
+                                      if a["final"] else float("nan"))
+        out.append(r)
+
+    p = os.path.join(RESULTS, "network_numbering_decomp.csv")
+    with open(p, "w", newline="") as fh:
+        for line in K.provenance_header([
+                "network numbering, detection separated from numbering.",
+                "matching: greedy, highest score first, mask IoU >= 0.5",
+                "detection recall = matched / all ground-truth teeth",
+                "fdi | detected   = correct FDI / matched",
+                "joint            = correct FDI / all ground-truth teeth",
+                "fdi_acc_joint_mapping_free scores predicted class id against",
+                "  ground-truth category id with NO position mapping, through a",
+                "  separate dedup and a separate matching pass. It must equal",
+                "  fdi_acc_joint, because class_to_position is a bijection;",
+                "  mapping_free_disagreements counts images where it did not."]):
+            fh.write(line + "\n")
+        w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
+        w.writeheader(); w.writerows(out)
+
+    print(f"\n  {'config':<28}{'det recall':>20}{'jaw|det':>20}"
+          f"{'FDI|det':>20}{'FDI joint':>20}{'mapping-free':>20}")
+    for r in out:
+        def f(k):
+            v, lo, hi = r[k], r[k + "_lo"], r[k + "_hi"]
+            return f"{v*100:>8.1f}% [{lo*100:>4.1f},{hi*100:>4.1f}]"
+        print(f"  {r['config']:<28}{f('detection_recall')}"
+              f"{f('jaw_acc_given_detected')}{f('fdi_acc_given_detected')}"
+              f"{f('fdi_acc_joint')}{f('fdi_acc_joint_mapping_free')}")
+    for r in out:
+        nd = r["mapping_free_disagreements"]
+        verdict = ("identical -- the result does not depend on the mapping"
+                   if nd == 0 else "MISMATCH -- investigate before reporting")
+        print(f"  mapping-free check @ tau={r['tau']}: {nd} of "
+              f"{r['n_images']} images disagree ({verdict})")
+    print(f"  wrote {p}")
+    rows = [row for t in taus for row in per_img[t]]
+    return rows, out
+
+
+def _nn_name(tau):
+    """Config label for a network-numbering run at one threshold."""
+    return f"network_numbering_t{int(round(tau * 100)):03d}"
 
 
 def numbering_sweep(predictor, images, gt_teeth, manifests, class_map,
@@ -769,12 +891,22 @@ def write_ablation(rows, extra_header=()):
             "peripheral_recall_fullarch_hi",
             "fdi_acc_canonical", "fdi_acc_canonical_lo", "fdi_acc_canonical_hi", "fdi_canonical_n",
             "fdi_acc_fullarch", "fdi_acc_fullarch_lo", "fdi_acc_fullarch_hi", "fdi_fullarch_n",
-            "jaw_acc", "jaw_acc_lo", "jaw_acc_hi", "jaw_n",
+            "jaw_acc_canonical", "jaw_acc_canonical_lo",
+            "jaw_acc_canonical_hi", "jaw_acc_canonical_n",
+            "jaw_acc_fullarch_confounded", "jaw_acc_fullarch_confounded_lo",
+            "jaw_acc_fullarch_confounded_hi", "jaw_acc_fullarch_confounded_n",
             "mean_mask_iou", "teeth_per_image_preprune", "teeth_per_image_final",
             "pruning_fired_images",
             "latency_median_s", "latency_iqr_lo_s", "latency_iqr_hi_s", "latency_n"]
     with open(p, "w", newline="") as fh:
-        for line in K.provenance_header(extra_header):
+        for line in K.provenance_header(list(extra_header) + [
+                "jaw_acc_canonical is the jaw figure to quote: 117 canonical",
+                "  images, where class->jaw is verifiably correct.",
+                "jaw_acc_fullarch_confounded scores all 93 full-arch images.",
+                "  25 of the 26 non-canonical ones use a DIFFERENT jaw",
+                "  partition (9 of 16 upper classes shared -- see",
+                "  check_jaw_membership.py), so that column measures",
+                "  annotation convention as much as model behaviour."]):
             fh.write(line + "\n")
         fh.write("# empty row = configuration not run; see the reason column\n")
         w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
@@ -1004,14 +1136,16 @@ def main():
         nrows, _stat = network_numbering(npred, images, gt_teeth, manifests,
                                          class_map, limit=limit)
         # append to per_image.csv so paired_deltas can align it against the
-        # geometric configs on identical image ids
+        # geometric configs on identical image ids. Drop every previous
+        # network row, whatever threshold it came from, so a rerun replaces
+        # them rather than stacking a second copy alongside.
         pth = os.path.join(RESULTS, "per_image.csv")
         existing = []
         if os.path.exists(pth):
             with open(pth) as fh:
                 existing = [r for r in csv.DictReader(
                     l for l in fh if not l.startswith("#"))
-                    if r["config"] != "network_numbering"]
+                    if not r["config"].startswith("network_numbering")]
         cols = (list(existing[0].keys()) if existing else list(nrows[0].keys()))
         with open(pth, "w", newline="") as fh:
             for line in K.provenance_header(
@@ -1040,7 +1174,8 @@ def main():
                              ("peripheral_recall_fullarch", "periph_full"),
                              ("fdi_acc_canonical", "fdi_canonical"),
                              ("fdi_acc_fullarch", "fdi_fullarch"),
-                             ("jaw_acc", "jaw")):
+                             ("jaw_acc_canonical", "jaw_canonical"),
+                             ("jaw_acc_fullarch_confounded", "jaw")):
             v, lo, hi = K.bootstrap_ci(acc[srcname])
             r[key], r[key + "_lo"], r[key + "_hi"] = v, lo, hi
         r["recall_fullarch_n"] = len(acc["recall_full"])
@@ -1048,7 +1183,8 @@ def main():
         r["central_recall_fullarch_n"] = len(acc["central_full"])
         r["fdi_canonical_n"] = len(acc["fdi_canonical"])
         r["fdi_fullarch_n"] = len(acc["fdi_fullarch"])
-        r["jaw_n"] = len(acc["jaw"])
+        r["jaw_acc_canonical_n"] = len(acc["jaw_canonical"])
+        r["jaw_acc_fullarch_confounded_n"] = len(acc["jaw"])
         r["mean_mask_iou"] = (statistics.mean(acc["mask_ious"])
                               if acc["mask_ious"] else float("nan"))
         r["teeth_per_image_preprune"] = (statistics.mean(acc["pre_prune"])

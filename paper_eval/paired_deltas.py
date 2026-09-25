@@ -26,12 +26,21 @@ SEED = 20260921
 N_BOOT = 10000
 
 # metric -> (numerator column, denominator column, subset column or None)
+#
+# "FDI accuracy" is JOINT: its denominator is every ground-truth tooth, so a
+# tooth the detector never found counts as a numbering error. The two rows
+# under it split that, using the number MATCHED on the same image as the
+# denominator, so detection and numbering can be compared separately when the
+# two sides run on different detectors.
 METRICS = {
     "full-arch recall":      ("recall_hit",  "recall_tot",  "full_arch"),
     "central-zone recall":   ("central_hit", "central_tot", "full_arch"),
     "peripheral recall":     ("periph_hit",  "periph_tot",  "full_arch"),
-    "FDI accuracy":          ("fdi_hit",     "fdi_tot",     "canonical"),
-    "jaw accuracy":          ("jaw_hit",     "jaw_tot",     "full_arch"),
+    "FDI accuracy (joint)":  ("fdi_hit",     "fdi_tot",     "canonical"),
+    "detection recall":      ("recall_hit",  "recall_tot",  "canonical"),
+    "FDI | detected":        ("fdi_hit",     "recall_hit",  "canonical"),
+    "jaw | detected":        ("jaw_hit",     "jaw_tot",     "canonical"),
+    "jaw accuracy (93 FA)":  ("jaw_hit",     "jaw_tot",     "full_arch"),
 }
 
 
@@ -126,8 +135,12 @@ def main():
     print(f"images per config: "
           f"{ {c: len(by[c]) for c in configs} }")
 
+    # --all-pairs anchors on --a (default single_pass) rather than whichever
+    # config sorts first, so adding a config cannot silently change what every
+    # comparison is measured against.
+    anchor = args.a if args.a in by else configs[0]
     comparisons = ([(args.a, args.b)] if not args.all_pairs else
-                   [(configs[0], c) for c in configs[1:]])
+                   [(anchor, c) for c in configs if c != anchor])
 
     n_intervals = 0
     lines = []

@@ -11,7 +11,10 @@ import random
 import subprocess
 from collections import defaultdict
 
-import numpy as np
+# numpy is imported lazily inside mask_iou (the only place it is used) so the
+# CSV-reading helpers -- bootstrap_ci, load_manifests, provenance_header -- can
+# be used by the stdlib-only scripts that run on the workstation with no
+# scientific stack installed. On Kaggle nothing changes.
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPLIT_DIR = os.path.join(ROOT, "data", "final-di-stratified", "test")
@@ -198,6 +201,7 @@ def poly_to_mask(segm, h, w):
 
 
 def mask_iou(a, b):
+    import numpy as np
     inter = np.logical_and(a, b).sum()
     if inter == 0:
         return 0.0

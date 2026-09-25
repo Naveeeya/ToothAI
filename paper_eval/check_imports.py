@@ -20,7 +20,9 @@ import sys
 
 DEFAULT = ["pipeline.py", "evalkit.py", "run_eval.py", "export_panels.py",
            "export_review.py", "label_quality.py", "check_sparse_bias.py",
-           "compare_ap.py", "kaggle/make_bundle.py"]
+           "compare_ap.py", "decompose.py", "paired_deltas.py",
+           "check_contrast_confound.py", "check_label_exposure.py",
+           "check_paper_claims.py", "kaggle/make_bundle.py"]
 
 
 def _bind_targets(node, into):

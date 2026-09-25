@@ -92,7 +92,7 @@ git state, GPU name and seed.
 | **per-tooth recall** | full-arch | **93** | same; sparse images excluded entirely |
 | `recall_anomaly_bearing_teeth` | sparse (1–10 labels) | 491 | the anomaly-annotation regime. 43.1% of its labelled teeth carry an anomaly box vs 0.0% of full-arch. Reported under its own name; never comparable to the above |
 | FDI accuracy | canonical / full-arch canonical | 117 / 67 | the 117 include missing teeth, which is what real patients have; the 67 have a 100% label ceiling |
-| jaw accuracy | all full-arch | 93 | jaw membership is consistent in every full-arch image, including the 26 whose within-jaw ordering is scrambled |
+| jaw accuracy | canonical | 117 | class&rarr;jaw is verifiably correct only here. 25 of the 26 non-canonical full-arch images use a different jaw partition (9 of 16 upper classes shared), so the 93-image figure measures annotation convention as much as the model &mdash; see `check_jaw_membership.py` and AUDIT.md &sect;6.1 |
 | position offset | canonical, sparse dropped | **112** | 67 full-arch + 45 mid canonical-partial. The 5 sparse canonical-partial images are excluded: their gaps are unannotated teeth, not absent ones |
 
 ## Not run, and why
