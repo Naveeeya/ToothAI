@@ -1,0 +1,134 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 1cb62142a05d180e8ba7e833e8a7339fa984c58b+dirty
+# gpu: no-nvidia-smi
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# paired per-image deltas; input results/per_image.csv
+# anchor config: single_pass
+# every interval in this file is paired on image_id: the same
+# image contributes to both sides of every delta.
+configs present: full, full_fix_routing, network_numbering_t005, network_numbering_t020, nms, no_zone_threshold, single_pass
+images per config: {'full': 648, 'full_fix_routing': 648, 'network_numbering_t005': 117, 'network_numbering_t020': 117, 'nms': 648, 'no_zone_threshold': 648, 'single_pass': 648}
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  full
+====================================================================================================
+metric                single_pas      full     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.8%     93.9%    +0.84pp  [ +0.27,  +1.55]pp      17/5/71  n=93
+central-zone recall        98.4%     98.4%    +0.07pp  [ +0.00,  +0.20]pp       1/0/92  n=93
+peripheral recall          90.9%     89.2%    +1.66pp  [ +0.55,  +2.98]pp      17/5/71  n=93
+FDI accuracy (joint)       64.5%     60.9%    +3.65pp  [ +0.15,  +7.35]pp     28/21/68  n=117
+detection recall           95.3%     94.5%    +0.77pp  [ +0.24,  +1.41]pp      17/4/96  n=117
+FDI | detected             67.7%     64.4%    +3.31pp  [ -0.18,  +6.97]pp     28/21/68  n=117
+jaw | detected             97.9%     98.3%    -0.33pp  [ -0.71,  +0.05]pp     13/20/84  n=117
+jaw accuracy (93 FA)       87.2%     87.3%    -0.14pp  [ -0.44,  +0.14]pp      9/10/74  n=93
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  full_fix_routing
+====================================================================================================
+metric                single_pasfull_fix_r     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.8%     94.3%    +0.44pp  [ +0.07,  +0.81]pp      13/4/76  n=93
+central-zone recall        98.4%     98.3%    +0.13pp  [ +0.00,  +0.33]pp       2/0/91  n=93
+peripheral recall          90.9%     90.1%    +0.76pp  [ +0.07,  +1.46]pp      13/4/76  n=93
+FDI accuracy (joint)       64.5%     61.6%    +2.88pp  [ +0.09,  +5.90]pp     25/14/78  n=117
+detection recall           95.3%     94.9%    +0.39pp  [ +0.09,  +0.72]pp     13/3/101  n=117
+FDI | detected             67.7%     64.9%    +2.76pp  [ -0.08,  +5.83]pp     23/15/79  n=117
+jaw | detected             97.9%     97.9%    +0.07pp  [ -0.24,  +0.37]pp      16/9/92  n=117
+jaw accuracy (93 FA)       87.2%     87.3%    -0.08pp  [ -0.36,  +0.17]pp       9/7/77  n=93
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  network_numbering_t005
+====================================================================================================
+metric                single_pasnetwork_nu     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.5%     75.9%   +18.61pp  [+17.07, +20.15]pp       67/0/0  n=67
+central-zone recall                                                            no paired data
+peripheral recall                                                              no paired data
+FDI accuracy (joint)       64.5%     46.3%   +18.22pp  [+11.84, +24.30]pp      75/34/8  n=117
+detection recall           95.3%     77.2%   +18.13pp  [+16.93, +19.34]pp      111/0/6  n=117
+FDI | detected             67.7%     60.0%    +7.71pp  [ +1.01, +14.24]pp      65/49/3  n=117
+jaw | detected             97.9%     97.8%    +0.10pp  [ -0.74,  +0.94]pp     29/41/47  n=117
+jaw accuracy (93 FA)       99.0%     98.0%    +0.93pp  [ -0.00,  +1.94]pp     20/16/31  n=67
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  network_numbering_t020
+====================================================================================================
+metric                single_pasnetwork_nu     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.5%     72.2%   +22.29pp  [+20.29, +24.35]pp       67/0/0  n=67
+central-zone recall                                                            no paired data
+peripheral recall                                                              no paired data
+FDI accuracy (joint)       64.5%     44.5%   +20.03pp  [+13.59, +26.21]pp      77/32/8  n=117
+detection recall           95.3%     73.4%   +21.90pp  [+20.41, +23.39]pp      117/0/0  n=117
+FDI | detected             67.7%     60.6%    +7.11pp  [ +0.34, +13.82]pp      66/47/3  n=116
+jaw | detected             97.9%     98.3%    -0.40pp  [ -1.20,  +0.39]pp     29/41/46  n=116
+jaw accuracy (93 FA)       99.0%     98.3%    +0.71pp  [ -0.12,  +1.60]pp     20/16/31  n=67
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  nms
+====================================================================================================
+metric                single_pas       nms     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.8%     93.8%    +0.94pp  [ +0.30,  +1.75]pp      19/6/68  n=93
+central-zone recall        98.4%     98.4%    +0.07pp  [ +0.00,  +0.20]pp       1/0/92  n=93
+peripheral recall          90.9%     89.0%    +1.87pp  [ +0.62,  +3.36]pp      19/6/68  n=93
+FDI accuracy (joint)       64.5%     58.9%    +5.64pp  [ +1.84,  +9.52]pp     34/17/66  n=117
+detection recall           95.3%     94.3%    +1.04pp  [ +0.47,  +1.76]pp      23/5/89  n=117
+FDI | detected             67.7%     62.4%    +5.23pp  [ +1.37,  +9.20]pp     34/19/64  n=117
+jaw | detected             97.9%     98.4%    -0.42pp  [ -0.81,  -0.02]pp     13/24/80  n=117
+jaw accuracy (93 FA)       87.2%     87.4%    -0.19pp  [ -0.51,  +0.11]pp      9/15/69  n=93
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+PAIRED DELTA   single_pass  MINUS  no_zone_threshold
+====================================================================================================
+metric                single_pasno_zone_th     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.8%     94.2%    +0.57pp  [ +0.00,  +1.28]pp      13/8/72  n=93
+central-zone recall        98.4%     98.4%    +0.07pp  [ +0.00,  +0.20]pp       1/0/92  n=93
+peripheral recall          90.9%     89.8%    +1.11pp  [ +0.00,  +2.43]pp      13/8/72  n=93
+FDI accuracy (joint)       64.5%     62.6%    +1.96pp  [ -1.29,  +5.36]pp     26/21/70  n=117
+detection recall           95.3%     94.7%    +0.56pp  [ +0.06,  +1.19]pp      13/6/98  n=117
+FDI | detected             67.7%     66.0%    +1.66pp  [ -1.58,  +5.04]pp     26/20/71  n=117
+jaw | detected             97.9%     98.2%    -0.21pp  [ -0.58,  +0.17]pp     14/19/84  n=117
+jaw accuracy (93 FA)       87.2%     87.3%    -0.10pp  [ -0.42,  +0.20]pp     10/11/72  n=93
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+COMPARISON ACCOUNTING
+====================================================================================================
+  paired intervals computed in this run : 44
+  config pairs                          : 6
+  metrics per pair                      : 8
+
+  These intervals are not independent: the same images and the same
+  detections feed every one of them, and the metrics are correlated
+  (peripheral recall is a component of overall recall). No
+  multiplicity correction is applied and none would be easy to
+  justify here, so an interval that happens to exclude zero should
+  be read as one comparison out of 44, not as a
+  standalone test.
+
+  Report the effect size and its interval. An interval that excludes
+  zero is suggestive at this scale, not established; an interval that
+  includes zero means this sample cannot separate the two, which is
+  not the same as showing they are equal.
+====================================================================================================

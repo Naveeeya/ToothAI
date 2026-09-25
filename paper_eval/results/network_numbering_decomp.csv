@@ -1,0 +1,24 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 1cb62142a05d180e8ba7e833e8a7339fa984c58b+dirty (stamped at bundle build 2026-09-25T09:32:55+00:00)
+# gpu: Tesla T4
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# network numbering, detection separated from numbering.
+# matching: greedy, highest score first, mask IoU >= 0.5
+# detection recall = matched / all ground-truth teeth
+# fdi | detected   = correct FDI / matched
+# joint            = correct FDI / all ground-truth teeth
+# fdi_acc_joint_mapping_free scores predicted class id against
+#   ground-truth category id with NO position mapping, through a
+#   separate dedup and a separate matching pass. It must equal
+#   fdi_acc_joint, because class_to_position is a bijection;
+#   mapping_free_disagreements counts images where it did not.
+config,tau,n_images,gt_teeth,matched,detection_recall,detection_recall_lo,detection_recall_hi,jaw_acc_given_detected,jaw_acc_given_detected_lo,jaw_acc_given_detected_hi,fdi_acc_given_detected,fdi_acc_given_detected_lo,fdi_acc_given_detected_hi,fdi_acc_joint,fdi_acc_joint_lo,fdi_acc_joint_hi,fdi_acc_joint_mapping_free,fdi_acc_joint_mapping_free_lo,fdi_acc_joint_mapping_free_hi,mapping_free_disagreements,detections_per_image,after_dedup_per_image
+network_numbering_t020,0.2,117,3370,2474,0.7341246290801187,0.7181610508280982,0.75,0.9834276475343573,0.9773003648155655,0.9888490641178813,0.6059013742926435,0.5636215334420881,0.646699732926364,0.4448071216617211,0.4110948905109489,0.4784033363121835,0.4448071216617211,0.4110948905109489,0.4784033363121835,0,57.256410256410255,26.923076923076923
+network_numbering_t005,0.05,117,3370,2601,0.7718100890207715,0.7584369449378331,0.7856917743460448,0.9784698193002691,0.9711465451784358,0.9852384557153672,0.5997693194925029,0.5585065434949962,0.6399389079801451,0.4629080118694362,0.4291996481970097,0.49611244019138756,0.4629080118694362,0.4291996481970097,0.49611244019138756,0,146.7863247863248,31.068376068376068

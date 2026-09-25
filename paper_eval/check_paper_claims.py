@@ -251,13 +251,44 @@ def main():
                     det.append(f"{c['model']:<26} generic AP-Tooth      {g:6.2f}{flag}")
                 if t is not None:
                     det.append(f"{c['model']:<26} mean AP over 32 pos.  {t:6.2f}{flag}")
+            # AP cannot settle this on its own -- one generic class is
+            # intrinsically easier to score than 32 -- so the verdict comes
+            # from the end-to-end head-to-head in decomposition.csv, with AP
+            # kept only as supporting context.
+            dec = read(os.path.join(R, "decomposition.csv")) or []
+            can = {r["config"]: r for r in dec
+                   if r["subset"] == "canonical_117"}
+            geo, net = can.get("single_pass"), can.get("network_numbering_t005")
+            if geo and net:
+                def pct(r, k):
+                    v, lo, hi = num(r, k), num(r, k + "_lo"), num(r, k + "_hi")
+                    return f"{v*100:5.1f}% [{lo*100:4.1f}, {hi*100:4.1f}]"
+                det.append("")
+                det.append("end-to-end on the same 117 canonical images "
+                           "(decomposition.csv):")
+                det.append(f"{'':<26}{'det recall':>22}{'FDI|detected':>22}"
+                           f"{'FDI joint':>22}")
+                for name, r in (("geometry (single_pass)", geo),
+                                ("network @ its optimum", net)):
+                    det.append(f"{name:<26}{pct(r, 'detection_recall'):>22}"
+                               f"{pct(r, 'fdi_acc_given_detected'):>22}"
+                               f"{pct(r, 'fdi_acc_joint'):>22}")
+                gap_j = (num(geo, "fdi_acc_joint") - num(net, "fdi_acc_joint")) * 100
+                gap_c = (num(geo, "fdi_acc_given_detected")
+                         - num(net, "fdi_acc_given_detected")) * 100
+                det.append("")
+                det.append(f"joint gap {gap_j:+.1f} pp; given the tooth was "
+                           f"found, {gap_c:+.1f} pp.")
+                det.append("The JOINT claim is contradicted. The narrower claim")
+                det.append("-- that direct numbering numbers found teeth as well")
+                det.append("as geometry does -- is contradicted by less: most of")
+                det.append("the joint gap is detection, and the network's")
+                det.append("detection recall is measured after winner-takes-all")
+                det.append("dedup, which is part of its numbering scheme.")
             rep.add("a 41-class network can number teeth as well as geometry can",
                     "CONTRADICTED",
-                    "per-position AP is far below the generic-tooth AP",
-                    "\n".join(det) +
-                    "\nThe 9-class model only has to find a tooth; the 41-class\n"
-                    "models must find AND number it. That is the comparison the\n"
-                    "design question turns on, and geometry wins it.")
+                    "geometry wins end to end; most of the gap is detection",
+                    "\n".join(det))
 
     # ---- 11. anchoring ----------------------------------------------------
     if offs:

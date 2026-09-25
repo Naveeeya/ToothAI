@@ -21,6 +21,8 @@ import sys
 from collections import defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import evalkit as K  # noqa: E402  (path must be set first)
 RESULTS = os.path.join(HERE, "results")
 SEED = 20260921
 N_BOOT = 10000
@@ -119,21 +121,41 @@ def wins(pairs):
     return wa, wb, tie
 
 
+class Tee:
+    """Print to the terminal and capture the same text for the report file.
+
+    The paired deltas are the evidence behind every comparison in the paper, so
+    they belong on disk beside the CSVs rather than only in a terminal
+    scrollback that nobody can cite.
+    """
+
+    def __init__(self):
+        self.lines = []
+
+    def __call__(self, *a):
+        line = " ".join(str(x) for x in a)
+        self.lines.append(line)
+        print(line)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--a", default="single_pass")
     ap.add_argument("--b", default="full")
     ap.add_argument("--all-pairs", action="store_true")
+    ap.add_argument("--out", default=os.path.join(RESULTS, "paired_deltas.txt"),
+                    help="write the report here as well as to stdout")
     args = ap.parse_args()
+    say = Tee()
 
     rows = load(os.path.join(RESULTS, "per_image.csv"))
     by = defaultdict(list)
     for r in rows:
         by[r["config"]].append(r)
     configs = sorted(by)
-    print(f"configs present: {', '.join(configs)}")
-    print(f"images per config: "
-          f"{ {c: len(by[c]) for c in configs} }")
+    say(f"configs present: {', '.join(configs)}")
+    say(f"images per config: "
+        f"{ {c: len(by[c]) for c in configs} }")
 
     # --all-pairs anchors on --a (default single_pass) rather than whichever
     # config sorts first, so adding a config cannot silently change what every
@@ -146,7 +168,7 @@ def main():
     lines = []
     for a, b in comparisons:
         if a not in by or b not in by:
-            print(f"\nskip {a} vs {b}: missing config")
+            say(f"\nskip {a} vs {b}: missing config")
             continue
         lines.append("")
         lines.append("=" * 100)
@@ -172,31 +194,42 @@ def main():
         lines.append("-" * 100)
         lines.append("  img w/l/t = images where a beat b / b beat a / tied")
 
-    print("\n".join(lines))
+    for l in lines:
+        say(l)
 
     # ---- comparison accounting -------------------------------------------
-    print()
-    print("=" * 100)
-    print("COMPARISON ACCOUNTING")
-    print("=" * 100)
-    print(f"  paired intervals computed in this run : {n_intervals}")
-    print(f"  config pairs                          : {len(comparisons)}")
-    print(f"  metrics per pair                      : {len(METRICS)}")
-    print()
-    print("  These intervals are not independent: the same images and the same")
-    print("  detections feed every one of them, and the metrics are correlated")
-    print("  (peripheral recall is a component of overall recall). No")
-    print("  multiplicity correction is applied and none would be easy to")
-    print("  justify here, so an interval that happens to exclude zero should")
-    print("  be read as one comparison out of " + str(n_intervals) + ", not as a")
-    print("  standalone test.")
-    print()
-    print("  Report the effect size and its interval. An interval that excludes")
-    print("  zero is suggestive at this scale, not established; an interval that")
-    print("  includes zero means this sample cannot separate the two, which is")
-    print("  not the same as showing they are equal.")
-    print("=" * 100)
+    say()
+    say("=" * 100)
+    say("COMPARISON ACCOUNTING")
+    say("=" * 100)
+    say(f"  paired intervals computed in this run : {n_intervals}")
+    say(f"  config pairs                          : {len(comparisons)}")
+    say(f"  metrics per pair                      : {len(METRICS)}")
+    say()
+    say("  These intervals are not independent: the same images and the same")
+    say("  detections feed every one of them, and the metrics are correlated")
+    say("  (peripheral recall is a component of overall recall). No")
+    say("  multiplicity correction is applied and none would be easy to")
+    say("  justify here, so an interval that happens to exclude zero should")
+    say("  be read as one comparison out of " + str(n_intervals) + ", not as a")
+    say("  standalone test.")
+    say()
+    say("  Report the effect size and its interval. An interval that excludes")
+    say("  zero is suggestive at this scale, not established; an interval that")
+    say("  includes zero means this sample cannot separate the two, which is")
+    say("  not the same as showing they are equal.")
+    say("=" * 100)
 
+
+    with open(args.out, "w") as fh:
+        for line in K.provenance_header([
+                "paired per-image deltas; input results/per_image.csv",
+                f"anchor config: {anchor}",
+                "every interval in this file is paired on image_id: the same",
+                "image contributes to both sides of every delta."]):
+            fh.write(line + "\n")
+        fh.write("\n".join(say.lines) + "\n")
+    print(f"\nwrote {args.out}")
 
 
 if __name__ == "__main__":

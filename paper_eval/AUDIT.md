@@ -333,17 +333,83 @@ roughly 20-point gap:
 | geometry (`single_pass` 64.5%) vs network at its optimum (46.3%) | **+18.2 pp**, unpaired |
 | geometry (`full` 60.9%) vs network at its optimum | +14.6 pp, unpaired |
 
-**Two honest qualifications.** The +18.2 pp figure is a difference of point
-estimates: per-image rows were only retained at tau = 0.20, so the *paired*
-delta exists only there. And the optimum sits at the low edge of the swept
-range, so 46.3% is marginally a lower bound -- though accuracy has plateaued
-(0.05 and 0.08 are identical) and `SCORE_THRESH_TEST` is itself 0.05, so
-little is left below it.
+**Update: the delta at the optimum is now paired.** Per-image rows are
+retained at tau = 0.05 as well, so the second row above no longer rests on a
+difference of point estimates:
 
-The conclusion does not depend on either. Geometry's 64.5% exceeds the **upper
-end of the network's interval at its own optimum** (49.6%) by 14.9 points. Even
-granting the network the most favourable reading of its best configuration, it
-loses by a wide margin.
+| comparison | paired delta | images w/l/t |
+|---|---|---|
+| geometry vs network at tau = 0.20 | +20.03 pp [+13.59, +26.21] | 77/32/8 |
+| geometry vs network at its optimum (tau = 0.05) | **+18.22 pp [+11.84, +24.30]** | 75/34/8 |
+
+One qualification remains: the optimum sits at the low edge of the swept range,
+so 46.3% is marginally a lower bound -- though accuracy has plateaued (0.05 and
+0.08 are identical) and `SCORE_THRESH_TEST` is itself 0.05, so little is left
+below it.
+
+### The gap is mostly detection, not numbering
+
+This is the correction that matters, and it changes how the result must be
+stated. The two sides use **different detectors** -- geometry runs on
+`resnet50_9class_20k`, the network on `resnext101_cascade_60k` -- so a joint
+FDI figure confounds detection with numbering. Split on the same 117 images and
+the same matching rule (§6.1b):
+
+| | detection recall | FDI \| detected | FDI joint |
+|---|---|---|---|
+| geometry (`single_pass`) | **95.3** [94.4, 96.2] | **67.7** [61.5, 73.4] | 64.5 [58.7, 70.1] |
+| network, tau = 0.20 | 73.4 [71.8, 75.0] | 60.6 [56.4, 64.7] | 44.5 [41.1, 47.8] |
+| network, tau = 0.05 (its optimum) | 77.2 [75.8, 78.6] | 60.0 [55.9, 64.0] | 46.3 [42.9, 49.6] |
+
+Paired, geometry minus network at the network's optimum:
+
+| metric | paired delta | images w/l/t |
+|---|---|---|
+| detection recall | **+18.13 pp** [+16.93, +19.34] | 111/0/6 |
+| FDI \| detected | **+7.71 pp** [+1.01, +14.24] | 65/49/3 |
+| jaw \| detected | +0.10 pp [−0.74, +0.94] | 29/41/47 |
+| FDI accuracy (joint) | +18.22 pp [+11.84, +24.30] | 75/34/8 |
+
+So of the ~18-point joint gap, **essentially all of it is detection**. Given a
+tooth both sides found, geometry numbers it better by 7.7 pp -- real, and the
+interval excludes zero, but a quarter the size of the headline figure and one
+of 44 paired intervals in this round. On jaw assignment the two are
+indistinguishable.
+
+**The joint claim stands; the numbering claim must be scaled down.** It is
+still true that the deployed architecture produces better FDI numbers
+end to end, by 18 points, and that is the number a clinician sees. It is *not*
+established that direct numbering is 20 points worse *at numbering*.
+
+**Caveat on the network's detection recall.** 73.4% is measured *after*
+winner-takes-all deduplication per FDI, which is part of the numbering scheme:
+at most 32 detections survive, one per position, and if the surviving claim for
+position *k* sits on the wrong tooth then the right tooth goes unmatched. Some
+of the detection deficit is therefore caused by the dedup, not by the Cascade's
+raw ability to find teeth. Settling that needs a class-agnostic recall
+measurement on the Cascade -- match every detection to ground truth ignoring
+class -- which has not been run. Until it is, "the network finds fewer teeth"
+should be read as "the network's numbering scheme leaves fewer teeth usable",
+which is the quantity that matters for the deployed system but is not the same
+claim.
+
+### Mapping-free control
+
+`class_to_position` was derived from this split, so the head-to-head could be
+challenged as depending on a mapping fitted to the test data. It does not.
+The control scores the network's predicted class id against the ground-truth
+category id with **no position mapping at all**, through its own
+deduplication (keyed on raw class id) and its own matching pass, never
+consulting `class_map`:
+
+| tau | mapped | mapping-free | images disagreeing |
+|---|---|---|---|
+| 0.20 | 44.5% [41.1, 47.8] | 44.5% [41.1, 47.8] | **0 of 117** |
+| 0.05 | 46.3% [42.9, 49.6] | 46.3% [42.9, 49.6] | **0 of 117** |
+
+Identical on every image, as a bijection requires. The point is that it was
+demonstrated rather than asserted -- the same mistake that produced the wrong
+jaw-membership claim in §6.1. The result does not depend on the mapping.
 
 ### Why the network struggles
 
@@ -551,6 +617,97 @@ ceiling = tooth instances in canonical images / all tooth instances
 A tooth in a non-canonical image cannot be scored correct whatever the model
 predicts. On the 67-image subset the ceiling is 100% by construction, which is
 why `n` is printed beside every FDI figure.
+
+### 6.1b FDI accuracy, split into detection and numbering
+
+Every FDI figure reported before this round was **joint**: the denominator was
+every ground-truth tooth, so a tooth the detector never found scored as a
+numbering error. That is the right headline number — a system that cannot find
+a tooth cannot number it — but it is the wrong number for a *design*
+comparison, because the two sides use different detectors:
+
+| side | detector | numbering |
+|---|---|---|
+| geometry | `resnet50_9class_20k`, one generic `Tooth` class | y-median jaw split, left-to-right ordering |
+| network | `resnext101_cascade_60k`, 32 position classes | the class id itself |
+
+`decompose.py` separates them on identical images with the identical matching
+rule (greedy, highest score first, mask IoU ≥ 0.5), reading `per_image.csv`
+only — no inference is re-run:
+
+```
+detection recall          matched / all ground-truth teeth
+jaw | detected            correct jaw / matched
+FDI | detected            correct FDI / matched
+joint                     correct FDI / all ground-truth teeth
+```
+
+Recall × conditional reproduces the joint figure to the printed precision on
+every configuration, which is the check that the two denominators really are
+the same set of images.
+
+**On the 117 canonical images:**
+
+| config | detection recall | jaw \| det | FDI \| det | FDI joint |
+|---|---|---|---|---|
+| `single_pass` | 95.3 [94.4, 96.2] | 97.9 [97.3, 98.5] | **67.7** [61.5, 73.4] | 64.5 [58.7, 70.1] |
+| `full` | 94.5 [93.5, 95.5] | 98.3 [97.6, 98.8] | 64.4 [58.3, 70.3] | 60.9 [55.0, 66.6] |
+| `full_fix_routing` | 94.9 [94.0, 95.8] | 97.9 [97.2, 98.5] | 64.9 [58.9, 70.6] | 61.6 [55.9, 67.2] |
+| `no_zone_threshold` | 94.7 [93.7, 95.7] | 98.2 [97.5, 98.7] | 66.0 [59.8, 71.9] | 62.6 [56.6, 68.3] |
+| `nms` | 94.3 [93.2, 95.3] | 98.4 [97.7, 98.9] | 62.4 [56.7, 68.1] | 58.9 [53.3, 64.4] |
+| network, tau = 0.20 | 73.4 [71.8, 75.0] | 98.3 [97.7, 98.9] | 60.6 [56.4, 64.7] | 44.5 [41.1, 47.8] |
+| network, tau = 0.05 | 77.2 [75.8, 78.6] | 97.8 [97.1, 98.5] | 60.0 [55.9, 64.0] | 46.3 [42.9, 49.6] |
+
+The network rows are the reason this decomposition was worth doing: see
+§5.7b. Note that **jaw assignment is 98% on both sides** -- whatever separates
+them, it is not which jaw a tooth is placed in.
+
+**Detection is not where the configurations differ.** The spread in detection
+recall across all five is 1.0 pp; the spread in numbering given detection is
+5.3 pp. Whatever the ensemble costs, it costs it in the geometric assignment,
+not in finding teeth — consistent with §5.4, where the extra CLAHE detections
+disturb the left-to-right ordering that `sort_and_assign_fdi` depends on.
+
+**What this changes about `single_pass` vs `full`.** Paired, on the same 117
+images:
+
+| metric | delta | 95% interval | images w/l/t |
+|---|---|---|---|
+| FDI accuracy (joint) | **+3.65 pp** | [+0.15, +7.35] | 28/21/68 |
+| detection recall | +0.77 pp | [+0.24, +1.41] | 17/4/96 |
+| FDI \| detected | **+3.31 pp** | **[−0.18, +6.97]** | 28/21/68 |
+
+The joint interval excludes zero; the conditional one does not. Part of the
+joint delta was the detection advantage, and once that is removed this sample
+cannot separate the two on numbering alone. The `single_pass`-beats-`full`
+claim on FDI accuracy stays *suggestive*, and is now slightly weaker than the
+joint figure implied. It should be stated as a joint result — which is what it
+is — not as a claim about the numbering itself.
+
+**Comparison accounting.** `paired_deltas.py --all-pairs` now computes **44**
+paired intervals: 8 metrics across 6 config pairs, anchored on `single_pass`.
+The earlier count of 21 predates the detection/numbering split and the network
+rows at a second threshold. These intervals are not independent -- the same
+images and the same detections feed all of them, and the metrics are nested
+(peripheral recall is a component of overall recall) -- so an interval that
+excludes zero is one comparison out of 44, not a standalone test. The full
+report, with every interval and its win/loss/tie split, is written to
+`results/paired_deltas.txt`.
+
+**Denominators: 112 and 117 are different sets.** They have been used
+interchangeably in discussion and they are not the same:
+
+- **117** — every canonical-mapping image. The set the head-to-head numbering
+  comparison ran on, and the FDI headline denominator.
+- **112** — those 117 minus the 5 canonical images that sit in the sparse
+  anomaly-annotation regime. This is the **position-offset** subset, chosen
+  because an unlabelled position there is an unannotated tooth rather than an
+  absent one.
+
+`decomposition.csv` reports both, plus the 93 full-arch images, so nothing
+depends on which one a reader assumes. The two barely differ — `single_pass`
+joint FDI is 64.5% on 117 and 64.9% on 112 — because the 5 extra images carry
+20 teeth between them.
 
 ### 6.2 The dataset contains two disjoint annotation regimes
 
