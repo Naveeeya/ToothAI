@@ -61,6 +61,22 @@ def ival(r, k):
         return None
 
 
+# Named row filters. per_image.csv carries flag columns, not a subset name, and
+# the complete/partial contrast needs canonical AND NOT full_arch, which no
+# single column expresses.
+SUBSET_FILTERS = {
+    None: lambda r: True,
+    "full_arch": lambda r: r.get("full_arch") == "1",
+    "canonical": lambda r: r.get("canonical") == "1",
+    "fdi_evaluable": lambda r: r.get("fdi_evaluable") == "1",
+    "sparse": lambda r: r.get("sparse") == "1",
+    "canonical_full_arch": lambda r: (r.get("canonical") == "1"
+                                      and r.get("full_arch") == "1"),
+    "canonical_partial": lambda r: (r.get("canonical") == "1"
+                                    and r.get("full_arch") != "1"),
+}
+
+
 def paired(rows_a, rows_b, num, den, subset):
     """Per-image (num, den) for both configs, restricted to a subset, aligned
     on image_id. Images where either side has no denominator are dropped from
@@ -70,7 +86,8 @@ def paired(rows_a, rows_b, num, den, subset):
     out = []
     for iid in sorted(set(a) & set(b)):
         ra, rb = a[iid], b[iid]
-        if subset and not (ra.get(subset) == "1" and rb.get(subset) == "1"):
+        keep = SUBSET_FILTERS[subset]
+        if not (keep(ra) and keep(rb)):
             continue
         na, da = ival(ra, num), ival(ra, den)
         nb, db = ival(rb, num), ival(rb, den)
@@ -143,6 +160,9 @@ def main():
     ap.add_argument("--a", default="single_pass")
     ap.add_argument("--b", default="full")
     ap.add_argument("--all-pairs", action="store_true")
+    ap.add_argument("--subset", choices=[k for k in SUBSET_FILTERS if k],
+                    help="restrict every metric to this subset, overriding the "
+                         "per-metric default in METRICS")
     ap.add_argument("--out", default=os.path.join(RESULTS, "paired_deltas.txt"),
                     help="write the report here as well as to stdout")
     args = ap.parse_args()
@@ -173,11 +193,18 @@ def main():
         lines.append("")
         lines.append("=" * 100)
         lines.append(f"PAIRED DELTA   {a}  MINUS  {b}")
+        if args.subset:
+            lines.append(f"SUBSET OVERRIDE: every metric restricted to "
+                         f"'{args.subset}'. The per-metric default subsets in "
+                         f"METRICS are ignored, so a metric's own name may no "
+                         f"longer describe its denominator.")
         lines.append("=" * 100)
         lines.append(f"{'metric':<22}{a[:10]:>10}{b[:10]:>10}{'delta':>10}"
                      f"{'95% interval on delta':>26}{'img w/l/t':>15}")
         lines.append("-" * 100)
         for label, (num, den, subset) in METRICS.items():
+            if args.subset:
+                subset = args.subset
             pairs = paired(by[a], by[b], num, den, subset)
             res = bootstrap_delta(pairs)
             if res is None:

@@ -56,9 +56,61 @@ def subsets(manifests):
     """
     return [
         ("canonical_117", manifests["canonical"]),
+        # The complete-versus-partial split. This is the paper's main result:
+        # the geometric engine numbers a complete arch well and a partial arch
+        # badly, because sort_and_assign_fdi anchors the leftmost detection at
+        # 18/48 unconditionally (app.py:126-135), so a missing tooth shifts the
+        # whole jaw. These two subsets partition canonical_117 exactly.
+        ("canonical_full_arch_67", manifests["canonical"] & manifests["full_arch"]),
+        ("canonical_partial_50", manifests["canonical"] - manifests["full_arch"]),
         ("canonical_no_sparse_112", manifests["offset_subset"]),
         ("full_arch_93", manifests["full_arch"]),
     ]
+
+
+# The complete/partial contrast, named once so the report and the CSV cannot
+# drift apart.
+CONTRAST = ("canonical_full_arch_67", "canonical_partial_50")
+
+
+def two_group_delta(a_pairs, b_pairs, n=K.N_BOOT, seed=K.SEED, alpha=0.05):
+    """Bootstrap CI on the difference between two DISJOINT groups of images.
+
+    This is deliberately not the paired bootstrap used for config comparisons.
+    The 67 complete arches and the 50 partial ones are different radiographs,
+    so there is no image to pair on and nothing cancels; each group is
+    resampled independently and the difference of the pooled ratios is taken.
+    The interval is wider than a paired one would be, which is correct -- the
+    between-image variance is real here, not a nuisance to be removed.
+    """
+    import random
+    if not a_pairs or not b_pairs:
+        return None
+
+    def pooled(rows):
+        num = sum(x for x, _ in rows)
+        den = sum(y for _, y in rows)
+        return (num / den) if den else float("nan")
+
+    point = pooled(a_pairs) - pooled(b_pairs)
+    rng = random.Random(seed)
+    stats = []
+    for _ in range(n):
+        an = ad = bn = bd = 0
+        for _ in range(len(a_pairs)):
+            x, y = a_pairs[rng.randrange(len(a_pairs))]
+            an += x; ad += y
+        for _ in range(len(b_pairs)):
+            x, y = b_pairs[rng.randrange(len(b_pairs))]
+            bn += x; bd += y
+        if ad and bd:
+            stats.append(an / ad - bn / bd)
+    if not stats:
+        return None
+    stats.sort()
+    lo = stats[int((alpha / 2) * len(stats))]
+    hi = stats[min(len(stats) - 1, int((1 - alpha / 2) * len(stats)))]
+    return point, lo, hi, len(a_pairs), len(b_pairs)
 
 
 def decompose(rows, ids):
@@ -97,12 +149,17 @@ def main():
             configs.append(r["config"])
 
     out = []
+    stages = {}          # (config, subset) -> the per-image pair lists
     for cfg in configs:
         crows = [r for r in rows if r["config"] == cfg]
         for name, ids in subsets(manifests):
             n_img, det, jaw, cond, joint = decompose(crows, ids)
             if n_img == 0:
                 continue
+            stages[(cfg, name)] = {"detection_recall": det,
+                                   "jaw_acc_given_detected": jaw,
+                                   "fdi_acc_given_detected": cond,
+                                   "fdi_acc_joint": joint}
             d = K.bootstrap_ci(det) if det else (float("nan"),) * 3
             j = K.bootstrap_ci(jaw) if jaw else (float("nan"),) * 3
             c = K.bootstrap_ci(cond) if cond else (float("nan"),) * 3
@@ -144,6 +201,73 @@ def main():
             fh.write(line + "\n")
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
         w.writeheader(); w.writerows(out)
+
+    # ---- complete versus partial ------------------------------------------
+    a_name, b_name = CONTRAST
+    contrast = []
+    for cfg in configs:
+        if (cfg, a_name) not in stages or (cfg, b_name) not in stages:
+            continue
+        row = {"config": cfg, "subset_a": a_name, "subset_b": b_name}
+        for metric in ("detection_recall", "jaw_acc_given_detected",
+                       "fdi_acc_given_detected", "fdi_acc_joint"):
+            ap, bp = stages[(cfg, a_name)][metric], stages[(cfg, b_name)][metric]
+            res = two_group_delta(ap, bp)
+            if res is None:
+                continue
+            d, lo, hi, na, nb = res
+            row[metric + "_a"] = sum(x for x, _ in ap) / sum(y for _, y in ap)
+            row[metric + "_b"] = sum(x for x, _ in bp) / sum(y for _, y in bp)
+            row[metric + "_delta"] = d
+            row[metric + "_delta_lo"] = lo
+            row[metric + "_delta_hi"] = hi
+            row["n_images_a"], row["n_images_b"] = na, nb
+        contrast.append(row)
+
+    if contrast:
+        cp = os.path.join(RESULTS, "complete_vs_partial.csv")
+        with open(cp, "w", newline="") as fh:
+            for line in K.provenance_header([
+                    "FDI accuracy on COMPLETE arches versus PARTIAL ones.",
+                    "Both subsets are canonical-mapping images and together they",
+                    "partition canonical_117 exactly: 67 complete + 50 partial.",
+                    "",
+                    "The delta is an UNPAIRED two-group bootstrap: the 67 and the",
+                    "50 are different radiographs, so there is no image to pair",
+                    "on. Each group is resampled independently and the difference",
+                    "of pooled ratios taken. This interval is wider than the",
+                    "paired config-vs-config intervals in paired_deltas.txt and",
+                    "is not comparable to them -- between-image variance is the",
+                    "effect being measured here, not a nuisance removed by",
+                    "pairing. Anyone quoting it should say 'unpaired'.",
+                    "",
+                    "Mechanism: sort_and_assign_fdi labels the leftmost detection",
+                    "18/48 unconditionally and its gap check never runs before",
+                    "the first tooth (app.py:126-135), so one missing tooth",
+                    "shifts every FDI in that jaw. A complete arch has no gap to",
+                    "mis-anchor on."]):
+                fh.write(line + "\n")
+            w = csv.DictWriter(fh, fieldnames=list(contrast[0].keys()))
+            w.writeheader(); w.writerows(contrast)
+
+        print(f"\n=== COMPLETE vs PARTIAL arches (canonical images only) ===")
+        print(f"    {a_name} (n={contrast[0]['n_images_a']}) minus "
+              f"{b_name} (n={contrast[0]['n_images_b']}), UNPAIRED bootstrap")
+        print(f"{'config':<24}{'metric':<26}{'complete':>11}{'partial':>10}"
+              f"{'delta':>11}{'95% interval':>22}")
+        for r in contrast:
+            for metric, label in (("fdi_acc_joint", "FDI accuracy (joint)"),
+                                  ("fdi_acc_given_detected", "FDI | detected"),
+                                  ("detection_recall", "detection recall"),
+                                  ("jaw_acc_given_detected", "jaw | detected")):
+                if metric + "_delta" not in r:
+                    continue
+                print(f"{r['config']:<24}{label:<26}"
+                      f"{r[metric + '_a']*100:>10.1f}%{r[metric + '_b']*100:>9.1f}%"
+                      f"{r[metric + '_delta']*100:>+10.2f}pp"
+                      f"  [{r[metric + '_delta_lo']*100:>+6.2f}, "
+                      f"{r[metric + '_delta_hi']*100:>+6.2f}]pp")
+            print()
 
     for name, _ in subsets(manifests):
         sel = [r for r in out if r["subset"] == name]

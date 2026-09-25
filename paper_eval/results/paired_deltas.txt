@@ -3,7 +3,7 @@
 # teeth model:   output/resnet50_9class_20k/model_final.pth
 #   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
 #   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
-# git: 1cb62142a05d180e8ba7e833e8a7339fa984c58b+dirty
+# git: d00b604bd5042d9bcf1383d7b53f7cd75be676cd+dirty
 # gpu: no-nvidia-smi
 # seed: 20260921   bootstrap resamples: 10000
 # NOTE: recall only. With a median of 8 labelled teeth per image, an

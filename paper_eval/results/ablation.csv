@@ -17,7 +17,20 @@
 # empty row = configuration not run; see the reason column
 # latency columns carried over from the v5 run: measured n=200 on the
 #   same pinned Tesla T4; v6 re-ran metrics only and did not re-time.
-config,status,reason,recall_fullarch,recall_fullarch_lo,recall_fullarch_hi,recall_fullarch_n,recall_anomaly_bearing_teeth,recall_anomaly_bearing_teeth_lo,recall_anomaly_bearing_teeth_hi,recall_anomaly_bearing_teeth_n,central_recall_fullarch,central_recall_fullarch_lo,central_recall_fullarch_hi,central_recall_fullarch_n,peripheral_recall_fullarch,peripheral_recall_fullarch_lo,peripheral_recall_fullarch_hi,fdi_acc_canonical,fdi_acc_canonical_lo,fdi_acc_canonical_hi,fdi_canonical_n,fdi_acc_fullarch,fdi_acc_fullarch_lo,fdi_acc_fullarch_hi,fdi_fullarch_n,jaw_acc,jaw_acc_lo,jaw_acc_hi,jaw_n,mean_mask_iou,teeth_per_image_preprune,teeth_per_image_final,pruning_fired_images,latency_median_s,latency_iqr_lo_s,latency_iqr_hi_s,latency_n
+# SUPERSEDED COLUMN -- jaw_acc_fullarch_confounded (renamed from jaw_acc).
+#   It scores all 93 full-arch images. 25 of the 26 non-canonical ones use a
+#   DIFFERENT jaw partition, sharing only 9 of 16 upper classes with the
+#   canonical one, so ground-truth label jaw matches geometry on 2144/2144
+#   canonical annotations but only 482/832 non-canonical ones
+#   (paper_eval/check_jaw_membership.py). The 87.2% here is label noise, not
+#   a model result: it is 98.96% where the labels are right and 57.2% where
+#   they put the tooth in the other jaw. DO NOT QUOTE IT.
+#   The jaw figure to quote is 97.9% [97.3, 98.5] on the 117 canonical
+#   images, in results/decomposition.csv (jaw_acc_given_detected, subset
+#   canonical_117). The harness now emits jaw_acc_canonical alongside this
+#   column; these rows predate that change and were NOT recomputed, because
+#   no measured value in this file may be replaced by a derived one.
+config,status,reason,recall_fullarch,recall_fullarch_lo,recall_fullarch_hi,recall_fullarch_n,recall_anomaly_bearing_teeth,recall_anomaly_bearing_teeth_lo,recall_anomaly_bearing_teeth_hi,recall_anomaly_bearing_teeth_n,central_recall_fullarch,central_recall_fullarch_lo,central_recall_fullarch_hi,central_recall_fullarch_n,peripheral_recall_fullarch,peripheral_recall_fullarch_lo,peripheral_recall_fullarch_hi,fdi_acc_canonical,fdi_acc_canonical_lo,fdi_acc_canonical_hi,fdi_canonical_n,fdi_acc_fullarch,fdi_acc_fullarch_lo,fdi_acc_fullarch_hi,fdi_fullarch_n,jaw_acc_fullarch_confounded,jaw_acc_fullarch_confounded_lo,jaw_acc_fullarch_confounded_hi,jaw_acc_fullarch_confounded_n,mean_mask_iou,teeth_per_image_preprune,teeth_per_image_final,pruning_fired_images,latency_median_s,latency_iqr_lo_s,latency_iqr_hi_s,latency_n
 single_pass,ok,,0.9475806451612904,0.9371639784946236,0.956989247311828,93,0.9909489051094891,0.9870778267254038,0.994424882629108,491,0.9843034663178548,0.9761114797611148,0.9909326424870466,93,0.9087767795438839,0.8908839779005525,0.9260780287474333,0.6451038575667656,0.5869957856712824,0.7007042253521126,117,0.8101679104477612,0.7607276119402985,0.8558768656716418,67,0.8719858156028368,0.8321013727560718,0.9105748757984387,93,0.870036490554848,18.858024691358025,18.65740740740741,50,0.14186540999997987,0.13750913199999104,0.2286063759999024,200
 full,ok,,0.9391801075268817,0.927755376344086,0.9499327956989247,93,0.9903649635036497,0.9863292611983712,0.9940290019903326,491,0.9836494440810988,0.9751958224543081,0.9908076165462902,93,0.8921907394609537,0.872739916550765,0.9107266435986159,0.6086053412462908,0.5503520048974594,0.6659830061529446,117,0.7425373134328358,0.6772388059701493,0.8036380597014925,67,0.873345259391771,0.8332734459216673,0.9119541875447388,93,0.8689830376611336,20.103395061728396,19.637345679012345,63,0.30626804799987895,0.28931671100008316,0.5264040069998828,200
 full_fix_routing,ok,,0.9432123655913979,0.9327956989247311,0.9529569892473119,93,0.9967883211678832,0.9940705603320487,0.9988412514484357,491,0.9829954218443427,0.974291364535267,0.9902216427640157,93,0.9011748445058743,0.8831258644536653,0.9183673469387755,0.6163204747774481,0.55863921217547,0.6719470046082949,117,0.7663246268656716,0.7066231343283582,0.8218283582089553,67,0.8728179551122195,0.8330379298121233,0.9112383679312813,93,0.8693102986507975,14.557098765432098,14.368827160493828,48,0.2998526349999793,0.2861655019999034,0.5221210800000335,200

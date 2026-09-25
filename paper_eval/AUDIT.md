@@ -381,6 +381,12 @@ still true that the deployed architecture produces better FDI numbers
 end to end, by 18 points, and that is the number a clinician sees. It is *not*
 established that direct numbering is 20 points worse *at numbering*.
 
+> **Read §6.1c before quoting the +7.7 pp figure.** It is an average over a
+> sign reversal: geometry beats the network by +25.93 pp on complete arches
+> and *loses* by 23.42 pp on partial ones. The aggregate is an artefact of how
+> many of each the split happens to contain, and is not a property of either
+> method.
+
 **Caveat on the network's detection recall.** 73.4% is measured *after*
 winner-takes-all deduplication per FDI, which is part of the numbering scheme:
 at most 32 detections survive, one per position, and if the surviving claim for
@@ -708,6 +714,78 @@ interchangeably in discussion and they are not the same:
 depends on which one a reader assumes. The two barely differ — `single_pass`
 joint FDI is 64.5% on 117 and 64.9% on 112 — because the 5 extra images carry
 20 teeth between them.
+
+### 6.1c Complete versus partial arches: the result reverses sign
+
+The geometric engine's FDI accuracy is not one number. Split the 117 canonical
+images into the 67 that are complete arches and the 50 that are not — the two
+partition the set exactly — and the deployed system behaves like two different
+systems:
+
+| `single_pass` | complete (67) | partial (50) | difference |
+|---|---|---|---|
+| FDI accuracy (joint) | **81.0%** | **35.6%** | +45.37 pp [+35.66, +55.18] |
+| FDI \| detected | **85.7%** | **36.8%** | +48.89 pp [+38.93, +58.84] |
+| detection recall | 94.5% | 96.7% | −2.24 pp [−3.87, −0.63] |
+| jaw \| detected | 99.0% | 96.2% | +2.76 pp [+1.51, +4.28] |
+
+**Detection is slightly *better* on the partial arches.** The collapse is
+entirely in the numbering, which is the signature the anchoring mechanism
+predicts: `sort_and_assign_fdi` labels the leftmost detection 18/48
+unconditionally and its gap check never runs before the first tooth
+(`app.py:126-135`), so a single missing tooth shifts every FDI in that jaw. A
+complete arch has no gap to mis-anchor on.
+
+These deltas are an **unpaired two-group bootstrap** — the 67 and the 50 are
+different radiographs, so there is no image to pair on and nothing cancels.
+They are wider than the paired config-vs-config intervals in
+`paired_deltas.txt` and are not comparable to them. `complete_vs_partial.csv`
+carries every config; the effect is present in all five geometric ones
+(+29.59 pp for `nms` up to +45.37 pp for `single_pass`).
+
+#### The network shows no such effect, and wins on partial arches
+
+The same contrast on `resnext101_cascade_60k`:
+
+| network @ tau = 0.05 | complete (67) | partial (50) | difference |
+|---|---|---|---|
+| FDI accuracy (joint) | 45.4% | 47.9% | −2.50 pp [−9.12, +4.42] |
+| FDI \| detected | 59.8% | 60.3% | −0.46 pp [−8.55, +7.91] |
+
+Flat, with both intervals spanning zero. Direct numbering never learns an
+anchor, so a missing tooth costs it nothing structurally — exactly what the
+mechanism predicts, and a genuine out-of-sample confirmation of it rather than
+a restatement.
+
+Head-to-head, paired on identical images:
+
+| FDI \| detected | geometry | network | paired delta | images w/l/t |
+|---|---|---|---|---|
+| complete arches (67) | 85.7% | 59.8% | **+25.93 pp** [+19.79, +32.35] | 56/11/0 |
+| partial arches (50) | 36.8% | 60.3% | **−23.42 pp** [−32.46, −14.68] | 9/38/3 |
+
+**The sign reverses.** On a complete arch geometry is far better; on a partial
+arch the network is far better, and it wins there despite conceding 17 pp of
+detection recall on the same images.
+
+**What this does to §5.7b.** The aggregate "+7.7 pp on FDI given detection" is
+an average over a sign reversal, weighted by the fact that 67 of 117 canonical
+images happen to be complete arches. It is not a stable property of either
+method and should not be quoted as one. The defensible claims are:
+
+1. End to end, the deployed system produces better FDI numbers on this split
+   (+18.22 pp joint, paired, at the network's own optimum). True, and it is
+   what a clinician sees.
+2. That advantage comes **entirely from complete arches** and reverses on
+   partial ones.
+3. Real patients have missing teeth. A system whose numbering accuracy is
+   35.6% on partial arches has a limitation that the aggregate figure hides,
+   and the paper must say so.
+
+This is also the strongest available argument for fixing the anchor rather
+than for the architecture as it stands: the mechanism is identified, it is
+localised to six lines, and the comparison model demonstrates that the
+weakness is not intrinsic to the task.
 
 ### 6.2 The dataset contains two disjoint annotation regimes
 

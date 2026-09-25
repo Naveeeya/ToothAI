@@ -190,11 +190,29 @@ def main():
         n = num(full, "fdi_canonical_n")
         lo, hi = num(full, "fdi_acc_canonical_lo"), num(full, "fdi_acc_canonical_hi")
         inside = lo is not None and hi is not None and not (hi < 0.85 or lo > 0.90)
+        # The draft's range is close to what the system does on COMPLETE
+        # arches and nowhere near what it does on partial ones, so report the
+        # split rather than only the aggregate it fails against.
+        detail = ["Label noise caps FDI accuracy at 41.6% over the whole split;",
+                  "this figure is restricted to canonical-mapping images."]
+        dec = read(os.path.join(R, "decomposition.csv")) or []
+        sub = {r["subset"]: r for r in dec if r["config"] == "single_pass"}
+        fa, pa = sub.get("canonical_full_arch_67"), sub.get("canonical_partial_50")
+        if fa and pa:
+            detail += [
+                "",
+                "The range is not far off on COMPLETE arches and nowhere near",
+                "on partial ones (single_pass, decomposition.csv):",
+                f"  complete arches (n=67)  joint {num(fa,'fdi_acc_joint')*100:5.1f}%"
+                f"   given detection {num(fa,'fdi_acc_given_detected')*100:5.1f}%",
+                f"  partial  arches (n=50)  joint {num(pa,'fdi_acc_joint')*100:5.1f}%"
+                f"   given detection {num(pa,'fdi_acc_given_detected')*100:5.1f}%",
+                "A range quoted without saying which of these it describes is",
+                "not a claim about the system -- see AUDIT.md 6.1c."]
         rep.add("FDI accuracy 85-90% (stated as a range, unmeasured)",
                 "SUPPORTED" if inside else "CONTRADICTED",
                 f"{fmt(f_fdi, True)} [{fmt(lo, True)}, {fmt(hi, True)}], n={n} images",
-                "Label noise caps FDI accuracy at 41.6% over the whole split;\n"
-                "this figure is restricted to canonical-mapping images.")
+                "\n".join(detail))
 
     # ---- 9. per-class anomaly AP -----------------------------------------
     if counts:
