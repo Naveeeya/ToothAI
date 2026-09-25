@@ -129,43 +129,61 @@ def main():
     comparisons = ([(args.a, args.b)] if not args.all_pairs else
                    [(configs[0], c) for c in configs[1:]])
 
-    any_sig = False
+    n_intervals = 0
+    lines = []
     for a, b in comparisons:
         if a not in by or b not in by:
             print(f"\nskip {a} vs {b}: missing config")
             continue
-        print("\n" + "=" * 92)
-        print(f"PAIRED DELTA   {a}  MINUS  {b}")
-        print("=" * 92)
-        print(f"{'metric':<22}{a[:10]:>10}{b[:10]:>10}{'delta':>9}"
-              f"{'95% CI on delta':>24}{'img w/l/t':>16}")
-        print("-" * 92)
+        lines.append("")
+        lines.append("=" * 100)
+        lines.append(f"PAIRED DELTA   {a}  MINUS  {b}")
+        lines.append("=" * 100)
+        lines.append(f"{'metric':<22}{a[:10]:>10}{b[:10]:>10}{'delta':>10}"
+                     f"{'95% interval on delta':>26}{'img w/l/t':>15}")
+        lines.append("-" * 100)
         for label, (num, den, subset) in METRICS.items():
             pairs = paired(by[a], by[b], num, den, subset)
             res = bootstrap_delta(pairs)
             if res is None:
-                print(f"{label:<22}{'no paired data':>69}")
+                lines.append(f"{label:<22}{'no paired data':>71}")
                 continue
             d, lo, hi, k = res
+            n_intervals += 1
             ra, rb = ratio(pairs, "a"), ratio(pairs, "b")
             wa, wb, tie = wins(pairs)
-            sig = not (lo <= 0.0 <= hi)
-            any_sig |= sig
-            mark = "  *" if sig else "   "
-            print(f"{label:<22}{ra*100:>9.1f}%{rb*100:>9.1f}%{d*100:>+8.2f}pp"
-                  f"  [{lo*100:>+6.2f}, {hi*100:>+6.2f}]pp{mark}"
-                  f"{f'{wa}/{wb}/{tie}':>13}  n={k}")
-        print("-" * 92)
-        print("  *  = CI excludes zero, i.e. a real difference on these images")
-        print("  img w/l/t = images where a beat b / b beat a / tied")
+            lines.append(
+                f"{label:<22}{ra*100:>9.1f}%{rb*100:>9.1f}%{d*100:>+9.2f}pp"
+                f"  [{lo*100:>+6.2f}, {hi*100:>+6.2f}]pp"
+                f"{f'{wa}/{wb}/{tie}':>13}  n={k}")
+        lines.append("-" * 100)
+        lines.append("  img w/l/t = images where a beat b / b beat a / tied")
 
-    print("\n" + "=" * 92)
-    print("Reading these correctly:")
-    print("  A paired CI that EXCLUDES zero establishes a difference.")
-    print("  A paired CI that INCLUDES zero does NOT establish equivalence --")
-    print("  it means this sample cannot distinguish them. Say that, not")
-    print("  'the two are equivalent'.")
-    print("=" * 92)
+    print("\n".join(lines))
+
+    # ---- comparison accounting -------------------------------------------
+    print()
+    print("=" * 100)
+    print("COMPARISON ACCOUNTING")
+    print("=" * 100)
+    print(f"  paired intervals computed in this run : {n_intervals}")
+    print(f"  config pairs                          : {len(comparisons)}")
+    print(f"  metrics per pair                      : {len(METRICS)}")
+    print()
+    print("  These intervals are not independent: the same images and the same")
+    print("  detections feed every one of them, and the metrics are correlated")
+    print("  (peripheral recall is a component of overall recall). No")
+    print("  multiplicity correction is applied and none would be easy to")
+    print("  justify here, so an interval that happens to exclude zero should")
+    print("  be read as one comparison out of " + str(n_intervals) + ", not as a")
+    print("  standalone test.")
+    print()
+    print("  Report the effect size and its interval. An interval that excludes")
+    print("  zero is suggestive at this scale, not established; an interval that")
+    print("  includes zero means this sample cannot separate the two, which is")
+    print("  not the same as showing they are equal.")
+    print("=" * 100)
+
 
 
 if __name__ == "__main__":

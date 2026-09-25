@@ -353,6 +353,93 @@ def evaluate(config, predictor, images, gt_teeth, manifests, class_map,
 
 
 # --------------------------------------------------------------------------
+def network_numbering(predictor, images, gt_teeth, manifests, class_map,
+                      subset="canonical", tau=TEETH_TAU, limit=None):
+    """Score a 41-class model's OWN tooth numbering, end to end.
+
+    The COCO comparison cannot settle the design question: one generic class
+    is intrinsically easier to score than 32, so a higher AP-Tooth than
+    mean-AP-over-positions is expected whatever the numbering is worth.
+
+    This measures the same thing both ways instead -- FDI accuracy on the same
+    images, same matching rule, same denominator:
+
+      network   the 41-class model's predicted class 1..32, mapped to an FDI
+                through the empirical class_to_position table. No geometric
+                engine at all.
+      geometry  the deployed pipeline: one generic Tooth class, then y-median
+                jaw split and left-to-right ordering.
+
+    Detections are thresholded at the same tau the deployed pipeline uses, and
+    duplicate FDIs are resolved winner-takes-all by score, mirroring
+    resolve_fdi_conflicts so neither side gets a free pass on duplicates.
+    """
+    import cv2
+    ids = sorted(i for i in gt_teeth if i in manifests[subset])
+    if limit:
+        ids = ids[:limit]
+    print(f"  scoring network numbering on {len(ids)} {subset} images, tau={tau}")
+
+    # class_map is class_id -> (jaw, rank, fdi); invert to what a prediction means
+    cls_to_fdi = {c: fdi for c, (_j, _r, fdi) in class_map.items()}
+    rows, per_img = [], []
+    for n, iid in enumerate(ids, 1):
+        meta = images[iid]
+        img = cv2.imread(os.path.join(K.SPLIT_DIR, meta["file_name"]))
+        if img is None:
+            continue
+        h, w = img.shape[:2]
+        predictor.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
+        out = predictor(img)
+        inst = out["instances"].to("cpu")
+        boxes = inst.pred_boxes.tensor.numpy()
+        scores = inst.scores.numpy()
+        classes = inst.pred_classes.numpy()
+        masks = inst.pred_masks.numpy() if inst.has("pred_masks") else None
+
+        cand = []
+        for i in range(len(inst)):
+            c = int(classes[i])
+            if c not in cls_to_fdi or float(scores[i]) < tau:
+                continue                       # class 0 't' and 33-40 anomalies
+            cand.append({"box": boxes[i].tolist(), "score": float(scores[i]),
+                         "fdi": cls_to_fdi[c],
+                         "mask": masks[i] if masks is not None else None})
+        # winner-takes-all per FDI, as resolve_fdi_conflicts does
+        best = {}
+        for d in sorted(cand, key=lambda d: -d["score"]):
+            best.setdefault(d["fdi"], d)
+        preds = list(best.values())
+
+        gts = gt_teeth[iid]
+        pairs = K.match_detections(gts, preds, h, w)
+        hit = tot = 0
+        for gt, pred, _iou in pairs:
+            _jaw, _rank, true_fdi = class_map[gt["category_id"]]
+            tot += 1
+            if pred is not None and pred.get("fdi") == true_fdi:
+                hit += 1
+        per_img.append({"image_id": iid, "config": "network_numbering",
+                        "full_arch": int(iid in manifests["full_arch"]),
+                        "canonical": int(iid in manifests["canonical"]),
+                        "fdi_evaluable": int(iid in manifests["fdi_evaluable"]),
+                        "sparse": int(iid in manifests["sparse"]),
+                        "recall_hit": "", "recall_tot": "",
+                        "central_hit": "", "central_tot": "",
+                        "periph_hit": "", "periph_tot": "",
+                        "fdi_hit": hit, "fdi_tot": tot,
+                        "jaw_hit": "", "jaw_tot": "",
+                        "pred_preprune": len(cand), "pred_final": len(preds)})
+        rows.append((hit, tot))
+        if n % 25 == 0:
+            print(f"    network_numbering: {n}/{len(ids)}", flush=True)
+
+    v, lo, hi = K.bootstrap_ci(rows)
+    print(f"\n  network numbering FDI accuracy: {v*100:.1f}% "
+          f"[{lo*100:.1f}, {hi*100:.1f}]  n={len(rows)} images")
+    return per_img, (v, lo, hi)
+
+
 def routing_ab(predictor, images, gt_teeth, gt_anoms, n_images=5):
     """A/B the app.py:953-958 class-routing bug on ANOMALY-BEARING images.
 
@@ -746,6 +833,12 @@ def main():
     ap.add_argument("--coco-eval", action="store_true")
     ap.add_argument("--latency", action="store_true")
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--network-numbering", action="store_true",
+                    help="score a 41-class model's own FDI numbering head to "
+                         "head against detection+geometry on identical images")
+    ap.add_argument("--numbering-model", default=None,
+                    help="model dir for --network-numbering "
+                         "(default: resnext101_cascade_60k)")
     ap.add_argument("--routing-ab", action="store_true",
                     help="A/B the app.py:953-958 routing bug on anomaly-bearing images")
     ap.add_argument("--fix-cls-routing", action="store_true",
@@ -776,8 +869,9 @@ def main():
     # It used to imply --all, so `--routing-ab --smoke-test` silently ran the
     # entire ablation a second time.
     configs = RUNNABLE if args.all else ([args.config] if args.config else [])
-    need_model = bool(configs) or args.sweep or args.latency or args.routing_ab
-    if not (need_model or args.coco_eval):
+    need_model = (bool(configs) or args.sweep or args.latency
+                  or args.routing_ab)
+    if not (need_model or args.coco_eval or args.network_numbering):
         ap.error("nothing to do: pass --config/--all/--coco-eval/--sweep/--latency/--routing-ab")
 
     predictor = None
@@ -786,6 +880,32 @@ def main():
         predictor = load_predictor(K.TEETH_MODEL)
         extra.append(f"teeth cfg.INPUT MIN/MAX_SIZE_TEST="
                      f"{LOADED_INPUT_SIZE.get('resnet50_9class_20k')}")
+
+    # ---- STAGE 0b: network numbering head-to-head -------------------------
+    if args.network_numbering:
+        md = args.numbering_model or K.CASCADE_MODEL
+        print(f"\n--- network numbering: {os.path.basename(md)} ---")
+        npred = load_predictor(md)
+        nrows, _stat = network_numbering(npred, images, gt_teeth, manifests,
+                                         class_map, limit=limit)
+        # append to per_image.csv so paired_deltas can align it against the
+        # geometric configs on identical image ids
+        pth = os.path.join(RESULTS, "per_image.csv")
+        existing = []
+        if os.path.exists(pth):
+            with open(pth) as fh:
+                existing = [r for r in csv.DictReader(
+                    l for l in fh if not l.startswith("#"))
+                    if r["config"] != "network_numbering"]
+        cols = (list(existing[0].keys()) if existing else list(nrows[0].keys()))
+        with open(pth, "w", newline="") as fh:
+            for line in K.provenance_header(
+                    [f"network_numbering rows from {os.path.basename(md)}",
+                     "one row per (image, config); configs are PAIRED on image_id"]):
+                fh.write(line + "\n")
+            w = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
+            w.writeheader(); w.writerows(existing); w.writerows(nrows)
+        print(f"  appended {len(nrows)} rows to {pth}")
 
     # ---- STAGE 0: routing A/B (cheap, and it can change the audit) --------
     if args.routing_ab:

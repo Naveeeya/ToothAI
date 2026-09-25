@@ -93,7 +93,10 @@ def build_code_bundle():
                 # exact train/test overlap per model: computed here because the
                 # bundle ships no training data, read by coco_eval for the
                 # contamination column
-                "results/train_test_overlap.json"):
+                "results/train_test_overlap.json",
+                # so --network-numbering can append its rows to the existing
+                # paired table rather than starting a fresh one
+                "results/per_image.csv"):
         src = os.path.join(ROOT, "paper_eval", sub)
         if not os.path.exists(src):
             continue
