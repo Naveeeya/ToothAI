@@ -440,6 +440,109 @@ def network_numbering(predictor, images, gt_teeth, manifests, class_map,
     return per_img, (v, lo, hi)
 
 
+def numbering_sweep(predictor, images, gt_teeth, manifests, class_map,
+                    subset="canonical", limit=None):
+    """Sweep tau for network numbering and find the network's OWN optimum.
+
+    Comparing geometry against the network at tau=0.20 is comparing it against
+    a threshold chosen for a different model. If the gap only exists because
+    the baseline is mistuned it is not a real finding, so the baseline gets
+    its best shot: inference is run ONCE per image and only the threshold
+    varies over the cached detections.
+    """
+    import cv2
+    taus = [0.05, 0.08, 0.12, 0.18, 0.20, 0.25, 0.30, 0.35, 0.42, 0.50]
+    cls_to_fdi = {c: fdi for c, (_j, _r, fdi) in class_map.items()}
+    ids = sorted(i for i in gt_teeth if i in manifests[subset])
+    if limit:
+        ids = ids[:limit]
+    print(f"  sweeping tau over {len(ids)} {subset} images "
+          f"(inference cached, threshold varied)")
+
+    per = {t: {"rows": [], "cand": [], "final": []} for t in taus}
+    for n, iid in enumerate(ids, 1):
+        meta = images[iid]
+        img = cv2.imread(os.path.join(K.SPLIT_DIR, meta["file_name"]))
+        if img is None:
+            continue
+        h, w = img.shape[:2]
+        predictor.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
+        inst = predictor(img)["instances"].to("cpu")
+        boxes = inst.pred_boxes.tensor.numpy()
+        scores = inst.scores.numpy()
+        classes = inst.pred_classes.numpy()
+        masks = inst.pred_masks.numpy() if inst.has("pred_masks") else None
+        gts = gt_teeth[iid]
+        gtm = K.gt_masks_for(gts, h, w)          # decode GT once, not per tau
+
+        for t in taus:
+            cand = []
+            for i in range(len(inst)):
+                c = int(classes[i])
+                if c not in cls_to_fdi or float(scores[i]) < t:
+                    continue
+                cand.append({"box": boxes[i].tolist(), "score": float(scores[i]),
+                             "fdi": cls_to_fdi[c],
+                             "mask": masks[i] if masks is not None else None})
+            best = {}
+            for d in sorted(cand, key=lambda d: -d["score"]):
+                best.setdefault(d["fdi"], d)
+            preds = list(best.values())
+            pairs = K.match_detections(gts, preds, h, w, gt_masks=gtm)
+            hit = tot = 0
+            for gt, pred, _iou in pairs:
+                _j, _r, true_fdi = class_map[gt["category_id"]]
+                tot += 1
+                if pred is not None and pred.get("fdi") == true_fdi:
+                    hit += 1
+            per[t]["rows"].append((hit, tot))
+            per[t]["cand"].append(len(cand))
+            per[t]["final"].append(len(preds))
+        if n % 25 == 0:
+            print(f"    numbering sweep: {n}/{len(ids)}", flush=True)
+
+    out = []
+    for t in taus:
+        v, lo, hi = K.bootstrap_ci(per[t]["rows"])
+        c = statistics.mean(per[t]["cand"]) if per[t]["cand"] else float("nan")
+        f = statistics.mean(per[t]["final"]) if per[t]["final"] else float("nan")
+        out.append({"tau": t, "fdi_accuracy": v, "fdi_accuracy_lo": lo,
+                    "fdi_accuracy_hi": hi,
+                    "detections_per_image": c, "after_dedup_per_image": f,
+                    "duplicates_discarded_per_image": c - f,
+                    "n_images": len(per[t]["rows"])})
+
+    p = os.path.join(RESULTS, "numbering_sweep.csv")
+    with open(p, "w", newline="") as fh:
+        for line in K.provenance_header([
+                "network numbering (resnext101_cascade_60k classes 1-32 mapped",
+                "  through the empirical class_to_position table), tau swept",
+                "detections cached once per image; only the threshold varies",
+                "duplicates_discarded = winner-takes-all per FDI, as",
+                "  resolve_fdi_conflicts does for the geometric pipeline"]):
+            fh.write(line + "\n")
+        w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
+        w.writeheader(); w.writerows(out)
+
+    print(f"\n{'tau':>6}{'FDI acc':>10}{'95% interval':>20}{'det/img':>10}"
+          f"{'after dedup':>13}{'dups dropped':>14}")
+    print("-" * 74)
+    best = max(out, key=lambda r: (r["fdi_accuracy"] if r["fdi_accuracy"] ==
+                                   r["fdi_accuracy"] else -1))
+    for r in out:
+        mark = "  <- best" if r is best else ""
+        print(f"{r['tau']:>6.2f}{r['fdi_accuracy']*100:>9.1f}%"
+              f"  [{r['fdi_accuracy_lo']*100:>5.1f},{r['fdi_accuracy_hi']*100:>5.1f}]"
+              f"{r['detections_per_image']:>10.1f}{r['after_dedup_per_image']:>13.1f}"
+              f"{r['duplicates_discarded_per_image']:>14.1f}{mark}")
+    print("-" * 74)
+    print(f"  network's OWN optimum: tau={best['tau']}, "
+          f"FDI accuracy {best['fdi_accuracy']*100:.1f}% "
+          f"[{best['fdi_accuracy_lo']*100:.1f}, {best['fdi_accuracy_hi']*100:.1f}]")
+    print(f"  wrote {p}")
+    return out, best
+
+
 def routing_ab(predictor, images, gt_teeth, gt_anoms, n_images=5):
     """A/B the app.py:953-958 class-routing bug on ANOMALY-BEARING images.
 
@@ -833,6 +936,9 @@ def main():
     ap.add_argument("--coco-eval", action="store_true")
     ap.add_argument("--latency", action="store_true")
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--numbering-sweep", action="store_true",
+                    help="sweep tau for network numbering to find the "
+                         "baseline's own optimum before comparing")
     ap.add_argument("--network-numbering", action="store_true",
                     help="score a 41-class model's own FDI numbering head to "
                          "head against detection+geometry on identical images")
@@ -871,7 +977,8 @@ def main():
     configs = RUNNABLE if args.all else ([args.config] if args.config else [])
     need_model = (bool(configs) or args.sweep or args.latency
                   or args.routing_ab)
-    if not (need_model or args.coco_eval or args.network_numbering):
+    if not (need_model or args.coco_eval or args.network_numbering
+            or args.numbering_sweep):
         ap.error("nothing to do: pass --config/--all/--coco-eval/--sweep/--latency/--routing-ab")
 
     predictor = None
@@ -880,6 +987,14 @@ def main():
         predictor = load_predictor(K.TEETH_MODEL)
         extra.append(f"teeth cfg.INPUT MIN/MAX_SIZE_TEST="
                      f"{LOADED_INPUT_SIZE.get('resnet50_9class_20k')}")
+
+    # ---- STAGE 0a: give the network baseline its best shot ----------------
+    if args.numbering_sweep:
+        md = args.numbering_model or K.CASCADE_MODEL
+        print(f"\n--- numbering tau sweep: {os.path.basename(md)} ---")
+        npred = load_predictor(md)
+        numbering_sweep(npred, images, gt_teeth, manifests, class_map,
+                        limit=limit)
 
     # ---- STAGE 0b: network numbering head-to-head -------------------------
     if args.network_numbering:

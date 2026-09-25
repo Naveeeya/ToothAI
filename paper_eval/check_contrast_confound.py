@@ -204,6 +204,49 @@ def main():
     ot = [r for r in rows if r["full_arch"] == 0]
     print(f"\nfull-arch {len(fa)} images | others {len(ot)} images")
 
+    # --- native resolution, and whether it confounds the proxy -------------
+    dims = {i["id"]: i["width"] for i in coco["images"]}
+    for r in rows:
+        r["native_width"] = dims[r["image_id"]]
+    fw = [r["native_width"] for r in fa]
+    ow = [r["native_width"] for r in ot]
+    print("\nnative width:  full-arch "
+          f"{min(fw)}-{max(fw)} (median {sorted(fw)[len(fw)//2]})   "
+          f"others {min(ow)}-{max(ow)} (median {sorted(ow)[len(ow)//2]})   "
+          f"d = {cohens_d(fw, ow):+.2f}")
+    print("  Everything below is measured after downsampling to a fixed width,")
+    print("  so a natively larger image is compressed more and its edges soften.")
+    print("  ABSOLUTE edge energy is therefore resolution-sensitive; a")
+    print("  WITHIN-image difference is not, since both bands share one scale.")
+
+    def pearson(x, y):
+        n = len(x); mx = sum(x) / n; my = sum(y) / n
+        sx = math.sqrt(sum((v - mx) ** 2 for v in x))
+        sy = math.sqrt(sum((v - my) ** 2 for v in y))
+        return (sum((a - mx) * (b - my) for a, b in zip(x, y)) / (sx * sy)
+                if sx and sy else float("nan"))
+
+    W = [r["native_width"] for r in rows]
+    print("\n  correlation of native width with each proxy:")
+    for k in ("central_grad", "periph_grad", "d_grad", "d_sd"):
+        print(f"    r(width, {k:<14}) = {pearson(W, [r[k] for r in rows]):+.3f}")
+
+    # matched-resolution comparison at the modal width of the full-arch set
+    modal = max(set(fw), key=fw.count)
+    mfa = [r for r in fa if r["native_width"] == modal]
+    mot = [r for r in ot if r["native_width"] == modal]
+    if len(mfa) >= 5 and len(mot) >= 5:
+        print(f"\n  MATCHED RESOLUTION ({modal}px): full-arch {len(mfa)} vs "
+              f"others {len(mot)}")
+        for k in ("d_grad", "central_grad", "periph_grad"):
+            a = [r[k] for r in mfa]; b = [r[k] for r in mot]
+            print(f"    {k:<14} {sum(a)/len(a):>7.2f} vs {sum(b)/len(b):>7.2f}"
+                  f"   d = {cohens_d(a, b):+.2f}")
+        print("    An absolute difference that collapses here was a")
+        print("    downsampling artefact and must not be reported.")
+    else:
+        print(f"\n  too few images at the modal width ({modal}px) to match on it")
+
     print("\n" + "=" * 94)
     print("IS THE CENTRAL BAND CLEARER ON THE 93 FULL-ARCH IMAGES?")
     print("=" * 94)

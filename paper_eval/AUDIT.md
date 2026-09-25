@@ -319,6 +319,38 @@ This is the result that justifies the deployed architecture. The paper should
 report it, because the architecture is currently justified in the draft by a
 class count that does not match the code.
 
+## 5.7c Why the network loses: it trains through annotation-convention noise
+
+Section 6.1 records that 26 of 93 full-arch **test** images use a
+class-to-position mapping that disagrees with every other image. The same
+check applied to the data the 41-class model was *trained* on:
+
+| split | images | full-arch (checkable) | canonical | **non-canonical** | distinct orderings |
+|---|---|---|---|---|---|
+| **train** | 5,584 | 737 | 524 | **213 (28.9%)** | **116** |
+| valid | 692 | 84 | 56 | 28 (33.3%) | 28 |
+| test | 716 | 93 | 67 | 26 (28.0%) | 19 |
+
+The cascade model saw 64,161 tooth instances. Of the 737 training images where
+the convention can be checked at all, **213 use a non-canonical mapping, spread
+across 116 mutually inconsistent orderings**.
+
+That is the mechanism behind the 20-point gap in 5.7b. Each of those images
+teaches the network a *different* answer for the same anatomical position. A
+model that predicts position directly has to learn through that noise, and
+116 conflicting conventions over 737 examples is not noise it can average
+away.
+
+The geometric engine never learns positions at all. It derives them at
+inference from left-to-right order within a jaw, so it is **structurally
+immune** to this particular corruption -- it cannot be taught a wrong
+convention because it is not taught any convention.
+
+The 28.9% is measurable only on the 737 full-arch training images, which are
+13% of the training set. The remaining 4,847 cannot be checked: their
+conventions may be equally inconsistent and simply invisible. The true
+exposure is therefore a lower bound.
+
 ## 5.8 The central zone is the EASY zone
 
 The system's central-relaxation rule exists because the spinal shadow is
@@ -339,7 +371,7 @@ Paired on the same 93 images, `single_pass` central minus peripheral is
 images individually. Detection is *better* in the central zone by a wide and
 statistically clear margin, under every configuration.
 
-Three checks support the number rather than an artefact:
+Four checks support the number rather than an artefact:
 
 - **Coordinate space.** COCO `width`/`height` match the actual JPEG on
   **716/716** images. Ground truth uses `meta["width"]` and predictions use
@@ -351,6 +383,34 @@ Three checks support the number rather than an artefact:
 - **Threshold sweep.** Central recall is flat at 98.2-98.7% across tau from
   0.05 to 0.50. There is no operating point at which the central relaxation
   changes the outcome.
+- **Image clarity.** Measured directly (`check_contrast_confound.py`: JPEG to
+  uncompressed BMP via `sips`, parsed with `struct`, no numpy or PIL). At
+  matched native resolution the full-arch images have a **smaller**
+  central-minus-peripheral edge-energy advantage than other images of the same
+  size (0.96 vs 1.40, d = -0.69). The clarity gradient runs slightly *against*
+  the recall result rather than producing it.
+
+### A resolution caveat, and a batch caveat
+
+An earlier pass reported that the 93 full-arch images are "smoother" in both
+bands (d = -1.12 central, -1.36 peripheral). **That was an artefact of the
+measurement**, not a property of the images. All 93 are natively **1991 px**
+wide while most of the split is **1056 px** (d = +2.73 on native width), and
+downsampling everything to a fixed 256 px compresses a larger image more,
+softening its edges. Absolute edge energy correlates with native width at
+r = -0.36 (central) and -0.50 (peripheral); restricted to 1991 px images the
+peripheral difference collapses to **d = +0.02**. The claim is withdrawn.
+
+The `central-minus-peripheral intensity sd` proxy correlates with native width
+at **r = +0.570**, so it was tracking resolution rather than contrast. Where
+the two proxies disagreed, edge energy is the one to trust.
+
+What survives is a **batch** caveat, which the paper should state: all 93
+full-arch images come from one acquisition family (`cate*` filenames at
+1991 px), while the 1056 px images are a separately-named family. The
+annotation-complete subset is not a random sample of the split, so every
+full-arch number in this study -- recall, central recall, per-tooth recall,
+jaw accuracy -- is measured on one batch.
 
 The zone holds half the dentition and it is the half made of simple,
 well-separated, high-contrast anterior teeth. The weakness is in the

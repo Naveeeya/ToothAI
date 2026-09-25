@@ -1,0 +1,35 @@
+{
+  "train": {
+    "split": "train",
+    "images": 5584,
+    "tooth_instances": 64161,
+    "full_arch_checkable": 737,
+    "canonical": 524,
+    "non_canonical": 213,
+    "pct_non_canonical": 28.900949796472183,
+    "distinct_orderings": 116,
+    "pct_of_split_checkable": 13.198424068767908
+  },
+  "valid": {
+    "split": "valid",
+    "images": 692,
+    "tooth_instances": 7922,
+    "full_arch_checkable": 84,
+    "canonical": 56,
+    "non_canonical": 28,
+    "pct_non_canonical": 33.333333333333336,
+    "distinct_orderings": 28,
+    "pct_of_split_checkable": 12.138728323699421
+  },
+  "test": {
+    "split": "test",
+    "images": 716,
+    "tooth_instances": 8107,
+    "full_arch_checkable": 93,
+    "canonical": 67,
+    "non_canonical": 26,
+    "pct_non_canonical": 27.956989247311828,
+    "distinct_orderings": 19,
+    "pct_of_split_checkable": 12.988826815642458
+  }
+}
