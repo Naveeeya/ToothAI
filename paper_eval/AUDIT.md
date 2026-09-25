@@ -305,15 +305,56 @@ on both sides so neither gets a free pass on duplicates:
 | network numbering (`resnext101_cascade_60k`, classes 1-32) | **44.5%** [41.1, 47.8] | — |
 
 `single_pass` beats the network on **77 of 117** images, loses on 32, ties on
-8. The geometric engine -- a y-median split and a left-to-right sort, with all
-the flaws documented in 5.1 and 5.2 -- numbers teeth about 20 percentage points
-more accurately than a 41-class Cascade R-CNN trained to do it directly.
+8.
 
-Why the network struggles is visible in its own output. At tau = 0.20 it emits
-**57.3** tooth-class detections per image against a maximum of 32 real teeth,
-and winner-takes-all deduplication discards **30.3** of them per image as
-duplicate FDI claims. It is not confidently assigning positions; it is
-proposing many positions per tooth and relying on the tie-break.
+### The baseline at its own optimum
+
+tau = 0.20 is the threshold the *deployed* pipeline uses, not one chosen for
+this model, so the network was given its best shot: inference cached once per
+image, tau swept (`results/numbering_sweep.csv`).
+
+| tau | FDI accuracy | detections/image | after dedup | duplicates dropped |
+|---|---|---|---|---|
+| **0.05** | **46.3%** [42.9, 49.6] | 146.8 | 31.1 | 115.7 |
+| 0.08 | 46.3% [42.9, 49.6] | 120.2 | 30.8 | 89.4 |
+| 0.12 | 46.1% [42.8, 49.5] | 96.1 | 30.2 | 65.9 |
+| 0.18 | 45.1% [41.8, 48.5] | 65.6 | 28.0 | 37.6 |
+| 0.20 | 44.5% [41.1, 47.8] | 57.3 | 26.9 | 30.3 |
+| 0.30 | 36.3% [33.1, 39.5] | 29.8 | 18.8 | 10.9 |
+| 0.50 | 13.2% [11.8, 14.7] | 6.8 | 5.8 | 1.0 |
+
+The network's optimum is **46.3%** at tau = 0.05-0.08, where it was already
+near-optimal at the deployed threshold. Tuning recovers **1.8 pp** of a
+roughly 20-point gap:
+
+| comparison | gap |
+|---|---|
+| geometry (`single_pass` 64.5%) vs network at tau = 0.20 (44.5%) | +20.03 pp [+13.59, +26.21] **paired** |
+| geometry (`single_pass` 64.5%) vs network at its optimum (46.3%) | **+18.2 pp**, unpaired |
+| geometry (`full` 60.9%) vs network at its optimum | +14.6 pp, unpaired |
+
+**Two honest qualifications.** The +18.2 pp figure is a difference of point
+estimates: per-image rows were only retained at tau = 0.20, so the *paired*
+delta exists only there. And the optimum sits at the low edge of the swept
+range, so 46.3% is marginally a lower bound -- though accuracy has plateaued
+(0.05 and 0.08 are identical) and `SCORE_THRESH_TEST` is itself 0.05, so
+little is left below it.
+
+The conclusion does not depend on either. Geometry's 64.5% exceeds the **upper
+end of the network's interval at its own optimum** (49.6%) by 14.9 points. Even
+granting the network the most favourable reading of its best configuration, it
+loses by a wide margin.
+
+### Why the network struggles
+
+Its own output shows it. At its optimum it emits **146.8** tooth-class
+detections per image against a maximum of 32 real teeth, and winner-takes-all
+deduplication discards **115.7** of them -- roughly five competing position
+claims per tooth. Raising tau suppresses the duplicates but costs accuracy
+monotonically (30.3 duplicates and 44.5% at tau = 0.20; 1.0 duplicate and
+13.2% at tau = 0.50). The model is not confidently assigning positions; it is
+proposing many and relying on the tie-break, and it needs that redundancy to
+reach even 46%.
 
 This is the result that justifies the deployed architecture. The paper should
 report it, because the architecture is currently justified in the draft by a
