@@ -156,11 +156,16 @@ def import_zip(zip_path: Path) -> str:
         out = WEIGHTS_DIR / model_id
         stage = WEIGHTS_DIR / f".{model_id}.incoming"
         shutil.rmtree(stage, ignore_errors=True)
+        stage_root = stage.resolve()
         copied = 0
         for n in names:
             r = rel(n)
             if r in ARTIFACT_FILES or r.startswith("plots/") or (r.startswith("samples/") and model_id == "caries_aku"):
-                target = stage / r
+                # Zip slip: "plots/../../x" passes the prefix check, so confine the resolved target.
+                target = (stage / r).resolve()
+                if Path(r).is_absolute() or ".." in Path(r).parts or not target.is_relative_to(stage_root):
+                    shutil.rmtree(stage, ignore_errors=True)
+                    raise SystemExit(f"unsafe path in artifact zip: {n!r}")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 with z.open(n) as src, open(target, "wb") as dst:
                     shutil.copyfileobj(src, dst)
