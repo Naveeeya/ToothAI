@@ -30,7 +30,8 @@ LABELS = {"caries": "Possible decay", "cavity": "Possible cavity", "crack": "Pos
 TIPS_HTML = """
 <ul style="margin:.2rem 0 0 1rem;padding:0;font-size:.88rem;color:#33475B">
 <li>Good light: daylight or a bright bathroom, with the phone flash on.</li>
-<li>Pull your lips and cheeks back so the teeth and gums are visible.</li>
+<li>Pull your lips and cheeks back so the teeth and gums are visible. Keep fingertips at the corners
+and out of the middle of the photo: the models can mistake a fingernail for a crown.</li>
 <li>Hold the camera close and tap the screen on the teeth to focus.</li>
 <li>Upper and lower teeth: photograph them in a mirror, or tilt your head back (upper) or down (lower).</li>
 <li>Main camera, full resolution: no screenshots, filters or zoom.</li>

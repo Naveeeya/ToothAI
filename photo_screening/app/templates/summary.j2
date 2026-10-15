@@ -3,7 +3,7 @@ None of the {{ n_supplied }} photo{{ 's' if n_supplied != 1 }} could be analysed
 {%- else -%}
 We analysed {{ n_analysed }} of {{ n_supplied }} photo{{ 's' if n_supplied != 1 }} ({{ analysed_views | join(', ') }}).
 {%- if counts %} The models marked {{ counts | join(', ') }}.{% else %} The models did not mark anything of concern.{% endif %}
-{%- if triage == 'PROMPT' %} Some of these are worth showing to a dentist soon, and a panoramic X-ray (OPG) is recommended to check what photos cannot show.
+{%- if triage == 'PROMPT' %} Some of these are worth showing to a dentist promptly, and a panoramic X-ray (OPG) is recommended to check what photos cannot show.
 {%- elif triage == 'SOON' %} We suggest booking a dental check-up; a panoramic X-ray (OPG) can confirm or rule out decay between teeth.
 {%- else %} Keep up regular dental check-ups.{% endif %}
  Screening index {{ index }}/100 ({{ index_band | lower }}). This is a screening aid, not a diagnosis.

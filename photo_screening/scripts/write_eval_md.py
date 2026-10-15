@@ -76,6 +76,27 @@ def main() -> None:
                  f"{pct(c['image_specificity'])} | {c['findings_per_photo']} |")
     L.append("")
 
+    # ---- selection rules
+    ev = test.get("rule_evidence")
+    if ev:
+        ev_v = aku["aku_valid"]["rule_evidence"]
+
+        def frac(key):
+            a, b = ev_v[key], ev[key]
+            return (f"{a['on_labelled_caries']}/{a['n']} validation, {b['on_labelled_caries']}/{b['n']} test")
+
+        L.append("## Evidence for the selection rules (`app/selection.py`)\n")
+        L.append("| Rule | Measurement on the AKU splits |\n| --- | --- |")
+        L.append(f"| AlphaDent caries alone is dropped | marks at 0.50 or more where the phone model saw nothing, "
+                 f"on labelled decay: {frac('alphadent_caries_alone_0.5')} |")
+        L.append(f"| Agreement rescue (phone model 0.20 to 0.48 and AlphaDent 0.50 or more) | on labelled decay: "
+                 f"{frac('agreement_rescue')} (small sample) |")
+        L.append(f"| Decay wins over a filling on the same spot | AlphaDent fillings from 0.15 on labelled decay: "
+                 f"{frac('alphadent_fillings_0.15')} |")
+        crowns = ", ".join(f"{v} from {k}" for k, v in ev["crowns_per_photo"].items())
+        L.append(f"| Fillings and crowns listed from 0.55 | AlphaDent crowns per test photo: {crowns} |")
+        L.append("| Grey-world colour pass for the caries model | see the configuration table above |\n")
+
     # ---- per model
     t = nb_a["test"]
     alone = test["alphadent_caries_alone"]
@@ -108,7 +129,10 @@ def main() -> None:
     L.append("- AKU labels caries only, so wear, fillings and crowns from AlphaDent are not validated on phone photos.")
     L.append("- DentalAI tooth instances come from semantic masks split by watershed; tooth numbers are approximate.")
     L.append("- Cavity and crack: too weak (or too few labels) to report; off by default.")
-    L.append("- All photos come from two public datasets; real users' phones, lighting and ages will differ.")
+    L.append("- All photos come from two public datasets; real users' phones, lighting and ages will differ. AKU "
+             "photos are flash-lit and white-balanced, so the grey-world pass helps less here than on warm, dim "
+             "indoor photos.")
+    L.append("- No photo in either dataset shows fingers holding the lips, so finger false positives are not measured.")
     args.out.write_text("\n".join(L) + "\n")
     print("wrote", args.out)
 

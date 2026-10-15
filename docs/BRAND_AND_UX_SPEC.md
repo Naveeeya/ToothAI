@@ -1,8 +1,12 @@
-# Tooth-AI — brand and UX specification
+# ToothAI — brand and UX specification
 
 Source of truth for the product's look, voice and interaction design. Implementation
 lives in `tooth_ai/ui/` (tokens, CSS, components) and `assets/brand/` (marks, usage guide).
 Researched October 2026.
+
+> **Identity superseded.** The name, logo, colour and type sections below describe the first
+> "Tooth-AI" identity. They are replaced by **ToothAI Brand Guidelines v1.0** (Oct 2026): see
+> `assets/brand/BRAND.md` and `tooth_ai/ui/theme.py`. The UX, voice and report sections still apply.
 
 ---
 
@@ -121,8 +125,8 @@ Semantic colours (viewer and chart only; always paired with an icon, label or pa
 
 ### Typography
 
-IBM Plex Sans (UI, 400/500/600), IBM Plex Mono (FDI numbers, metrics), IBM Plex Sans
-Devanagari (future Hindi/Marathi reports). All SIL OFL. TTFs in `static/fonts/` for the PDF.
+Plus Jakarta Sans (headlines 800, UI 400/500), JetBrains Mono (FDI numbers, metrics). All SIL OFL.
+TTFs in `static/fonts/` for the app and the PDF (Brand Guidelines v1.0).
 
 ### Partner logos
 
@@ -205,7 +209,7 @@ Full title, tagline, institutions, partner strip, team, dataset attribution
 
 ## 4. PDF report
 
-A4, IBM Plex embedded.
+A4, Plus Jakarta Sans and JetBrains Mono embedded.
 
 - **Page 1** — ink-900 header band (white lockup, "Panoramic radiograph report"); case meta
   grid; reliability statement; annotated OPG at full width, aspect preserved; legend;

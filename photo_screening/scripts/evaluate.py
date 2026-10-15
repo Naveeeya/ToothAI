@@ -164,15 +164,26 @@ class Config:
     alphadent_caries: str = "low"          # "low": standalone, capped Low · "agree": only as agreement · "off"
     keep: tuple = ()                       # per-type keep-threshold overrides, (("wear", 0.55), ...)
     drop_types: tuple = ()
+    select: bool = False                   # True: the service's selection rules (app/selection.py)
+    colour: tuple = ()                     # colour passes merged into caries_aku (needs a colour cache)
+    settings: tuple = ()                   # Settings overrides for the selection rules, (("edge_margin", 0), ...)
 
 
+OLD_RESTORATIONS = (("filling", 0.15), ("crown", 0.15))   # before the selection rules
 CONFIGS = [
     Config("original (AlphaDent caries standalone, cavity/crack on, wear from 0.30)",
-           keep=(("wear", 0.30),)),
-    Config("AlphaDent caries as agreement only", alphadent_caries="agree", keep=(("wear", 0.30),)),
-    Config("+ wear from 0.55", alphadent_caries="agree", keep=(("wear", 0.55),)),
-    Config("service default (+ cavity/crack off)", alphadent_caries="agree", keep=(("wear", 0.55),),
+           keep=(("wear", 0.30),) + OLD_RESTORATIONS),
+    Config("AlphaDent caries as agreement only", alphadent_caries="agree", keep=(("wear", 0.30),) + OLD_RESTORATIONS),
+    Config("+ wear from 0.55", alphadent_caries="agree", keep=(("wear", 0.55),) + OLD_RESTORATIONS),
+    Config("+ cavity/crack off", alphadent_caries="agree", keep=(("wear", 0.55),) + OLD_RESTORATIONS,
            drop_types=("cavity", "crack")),
+    Config("+ selection rules (agreement rescue, restorations from 0.55, edge rule, decay over filling)",
+           select=True),
+]
+COLOUR_CONFIGS = [
+    Config("+ colour pass: grey world", select=True, colour=("grayworld",)),
+    Config("+ colour pass: CLAHE", select=True, colour=("clahe",)),
+    Config("+ colour passes: grey world and CLAHE", select=True, colour=("grayworld", "clahe")),
 ]
 
 
@@ -182,6 +193,8 @@ def findings_for(row: dict, cfg: Config, thresholds: dict, phone_trained) -> lis
     th = {k: dict(v) for k, v in thresholds.items()}
     for t, v in cfg.keep:
         th[t]["t_low"] = v
+    if cfg.select:
+        return _selected(row, cfg, th, phone_trained)
     per = {}
     for m, dets in row["raw"].items():
         if "@" in m:                               # colour-pass caches are scored by their own configs
@@ -206,6 +219,53 @@ def findings_for(row: dict, cfg: Config, thresholds: dict, phone_trained) -> lis
                            band=rules.band(d.type, d.score, d.sources, th, phone_trained), sources=d.sources,
                            bbox=list(map(float, d.box))))
     return out
+
+
+def _selected(row: dict, cfg: Config, th: dict, phone_trained) -> list[Finding]:
+    """Score exactly what the service reports: app/selection.py on the cached raw detections."""
+    from photo_screening.app.fusion import merge_max
+    from photo_screening.app.models.base import RawDet
+    from photo_screening.app.selection import select
+
+    settings = Settings(**dict(cfg.settings))
+
+    def dets(key: str, model_id: str) -> list[RawDet]:
+        return [RawDet(model_id, t, s, np.array(b, np.float32), None, 0, [model_id])
+                for t, s, b in row["raw"].get(key, [])]
+
+    per = {m: dets(m, m) for m in row["raw"] if "@" not in m}
+    if cfg.colour and "caries_aku" in per:
+        per["caries_aku"] = merge_max([per["caries_aku"], *(dets(f"caries_aku@{c}", "caries_aku") for c in cfg.colour)],
+                                      settings.fusion_iou)
+    fused = select(per, th, settings, (row["w"], row["h"]), "caries_aku" in row["raw"])
+    return [Finding(id=i + 1, view="front", region="-", type=d.type, confidence=min(1.0, d.score),
+                    band=rules.band(d.type, d.score, d.sources, th, phone_trained), sources=d.sources,
+                    bbox=list(map(float, d.box))) for i, d in enumerate(fused)]
+
+
+def rule_evidence(rows: list[dict]) -> dict:
+    """The measurements behind app/selection.py, from the same cached detections."""
+    from photo_screening.app.selection import same_spot
+
+    def boxes(r, model, t, lo=0.0, hi=9.0):
+        return [np.array(b) for ty, s, b in r["raw"].get(model, []) if ty == t and lo <= s < hi]
+
+    def on_gt(b, r):
+        return any(same_spot(b, np.array(g)) for g in r["gt"]["caries"])
+
+    agree = [on_gt(b, r) for r in rows for b in boxes(r, "caries_aku", "caries", 0.20, 0.48)
+             if any(same_spot(b, a) for a in boxes(r, "alphadent", "caries", 0.50))]
+    alone = [on_gt(b, r) for r in rows for b in boxes(r, "alphadent", "caries", 0.50)
+             if not any(same_spot(b, a) for a in boxes(r, "caries_aku", "caries", 0.15))]
+    fill = [on_gt(b, r) for r in rows for b in boxes(r, "alphadent", "filling", 0.15)]
+    n = max(len(rows), 1)
+    return {
+        "agreement_rescue": {"n": len(agree), "on_labelled_caries": int(sum(agree))},
+        "alphadent_caries_alone_0.5": {"n": len(alone), "on_labelled_caries": int(sum(alone))},
+        "alphadent_fillings_0.15": {"n": len(fill), "on_labelled_caries": int(sum(fill))},
+        "crowns_per_photo": {str(t): round(sum(len(boxes(r, "alphadent", "crown", t)) for r in rows) / n, 2)
+                             for t in (0.15, 0.40, 0.55)},
+    }
 
 
 def match_pr(preds: list[tuple[float, list]], gts: np.ndarray, thr: float = 0.5):
@@ -389,8 +449,11 @@ def main() -> None:
                     r["quality_failed"], r["quality_passed"] = failed, not failed
             else:
                 rows = cached(f"aku_{split}", aku_items(args.aku / split), aku_gt)
+            has_colour = any("caries_aku@grayworld" in r["raw"] for r in rows)
             results[f"aku_{split}"] = {
-                "configs": [score_aku(rows, c, thresholds, phone_trained) for c in configs],
+                "configs": [score_aku(rows, c, thresholds, phone_trained)
+                            for c in configs + (COLOUR_CONFIGS if has_colour else [])],
+                "rule_evidence": rule_evidence(rows),
                 "alphadent_caries_alone": score_alphadent_alone(rows),
                 "quality_gate_rejected": round(1 - np.mean([r["quality_passed"] for r in rows]), 3),
                 "quality_failures": {k: int(sum(k in r["quality_failed"] for r in rows))

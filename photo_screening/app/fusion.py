@@ -95,5 +95,15 @@ def fuse_models(per_model: dict[str, list[RawDet]], priority: dict[str, tuple[st
         lead = next((m for m in order if m in models), None)
         members = [d for d in cluster if d.model_id == lead] if lead else cluster
         best = max(members, key=lambda d: d.score)
-        out.append(RawDet(best.model_id, best.type, best.score, best.box, best.polygon, 0, models))
+        scores = {m: max(d.score for d in cluster if d.model_id == m) for m in models}
+        out.append(RawDet(best.model_id, best.type, best.score, best.box, best.polygon, 0, models, scores))
     return sorted(out, key=lambda d: -d.score)
+
+
+def merge_max(passes: Sequence[Sequence[RawDet]], iou_thr: float = 0.55, contain_thr: float = 0.6) -> list[RawDet]:
+    """Union of one model's colour-normalised passes: each spot keeps its best-scoring detection.
+
+    Unlike ``fuse_passes`` there is no single-pass penalty: the passes exist because a lesion can be
+    invisible to the model under a colour cast it never saw in training (see EVAL.md)."""
+    flat = [d for p in passes for d in p]
+    return [max(c, key=lambda d: d.score) for c in _clusters(flat, iou_thr, contain_thr)]

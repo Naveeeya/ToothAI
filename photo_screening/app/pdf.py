@@ -146,7 +146,7 @@ def _view_block(im: ImageResult, st: dict, fonts: dict) -> list:
                      Paragraph(_e(f.band), st["cell"])])
     side_w = W - photo_w - 4 * mm
     if len(rows) > 1:
-        table = _table(rows, [8 * mm, 26 * mm, side_w - 53 * mm, 19 * mm], fonts)
+        table = _table(rows, [8 * mm, 25 * mm, side_w - 56 * mm, 23 * mm], fonts)
         table.setStyle(TableStyle([("TOPPADDING", (0, 1), (-1, -1), 1.6), ("BOTTOMPADDING", (0, 1), (-1, -1), 1.6)]))
     else:
         table = Paragraph("No findings marked in this photo.", st["body"])

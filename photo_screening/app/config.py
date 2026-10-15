@@ -25,17 +25,19 @@ DEFAULT_THRESHOLDS: dict[str, dict[str, float]] = {
     # Wear (AlphaDent "abrasion", DSLR-trained) fires on ordinary incisal edges in phone photos; from 0.55
     # it cut marks per photo from 4.0 to 3.2 on the AKU test split with no change to triage. Not validated.
     "wear": {"t_low": 0.55, "t_med": 0.65, "t_high": 0.80},
-    # Restorations never raise triage and cost at most 5 index points, so they are kept from a lower
-    # score (AlphaDent scores amalgam fillings in phone photos around 0.2-0.4). Uncalibrated default.
-    "filling": {"t_low": 0.15, "t_med": 0.40, "t_high": 0.70},
-    "crown": {"t_low": 0.15, "t_med": 0.40, "t_high": 0.70},
+    # Restorations (AlphaDent, DSLR-trained) are not validated on phone photos and never change the triage,
+    # so only fairly confident ones are listed. From 0.15 AlphaDent marked 0.46 crowns per AKU test photo
+    # (a caries clinic population) and read fingertips holding the lips as crowns (scores up to ~0.5).
+    # Uncalibrated default.
+    "filling": {"t_low": 0.55, "t_med": 0.55, "t_high": 0.75},
+    "crown": {"t_low": 0.55, "t_med": 0.55, "t_high": 0.75},
     "tooth": {"t_low": 0.25, "t_med": 0.45, "t_high": 0.65},
 }
 
 # Calibrated keep thresholds are never allowed below these. When a weak detector cannot reach the
 # calibration recall target, the notebook falls back to a very low score (0.05); without a floor the
 # report would be flooded with false findings (DentalAI cavity precision is 0.15 at 0.05).
-MIN_KEEP = {"caries": 0.15, "cavity": 0.25, "crack": 0.30, "wear": 0.15, "filling": 0.15, "crown": 0.15,
+MIN_KEEP = {"caries": 0.15, "cavity": 0.25, "crack": 0.30, "wear": 0.15, "filling": 0.55, "crown": 0.55,
             "tooth": 0.15}
 
 ALPHADENT_FILES = {
@@ -63,6 +65,16 @@ class Settings(BaseSettings):
     report_cavity_crack: bool = Field(
         False, description="report DentalAI cavity/crack marks; off because they measured precision ~0.34 "
                            "and recall ~0.25 even on DentalAI's own test split (EVAL.md)")
+    # Measured selection rules (photo_screening/app/selection.py; evidence in EVAL.md)
+    agree_caries_aku_min: float = Field(0.20, description="caries kept below t_low when AKU >= this ...")
+    agree_alphadent_min: float = Field(0.50, description="... and AlphaDent caries >= this on the same spot")
+    edge_margin: float = Field(0.01, description="drop wear/filling/crown marks touching the frame edge "
+                                                 "(fraction of width/height): fingers holding the lips")
+    colour_passes: list[str] = Field(default_factory=lambda: ["grayworld"],
+                                     description="extra colour-normalised passes for the caries model "
+                                                 "(grayworld, clahe). Grey world is on: it lifts decay hidden "
+                                                 "by warm indoor light at +1.6 pp false referral on AKU test; "
+                                                 "CLAHE doubled false referrals (EVAL.md)")
     max_side: int = 1280
     max_upload_mb: int = 15
     fusion_iou: float = 0.55                      # same IoU as the OPG pipeline's box fusion

@@ -85,7 +85,7 @@ def triage(findings: Sequence[Finding], analysed: bool) -> Triage:
     concerning = [f for f in findings if f.type == "caries" or f.type in URGENT_TYPES]
     if urgent or high:
         return Triage(level="PROMPT", recommend_opg=True, reasons=_group(concerning) + [
-            "See a dentist soon and ask about a panoramic X-ray (OPG) to check what photos cannot show."])
+            "See a dentist promptly and ask about a panoramic X-ray (OPG) to check what photos cannot show."])
     if medium or len(low) >= 2:
         return Triage(level="SOON", recommend_opg=True, reasons=_group(concerning) + [
             "Book a dental check-up; an OPG X-ray can confirm or rule out decay between teeth."])

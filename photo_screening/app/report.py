@@ -15,11 +15,11 @@ import numpy as np
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 import photo_screening
-from photo_screening.app import quality, regions, render, rules
+from photo_screening.app import quality, regions, render, rules, selection
 from photo_screening.app.config import Settings, load_thresholds
-from photo_screening.app.fusion import fuse_models, fuse_passes
-from photo_screening.app.imaging import decode, png_b64
-from photo_screening.app.models.registry import TYPE_PRIORITY, Registry
+from photo_screening.app.fusion import fuse_passes, merge_max
+from photo_screening.app.imaging import COLOUR_PASSES, decode, png_b64
+from photo_screening.app.models.registry import Registry
 from photo_screening.app.schemas import VIEWS, Finding, ImageResult, ScreeningReport, VlmStatus
 
 log = logging.getLogger(__name__)
@@ -60,8 +60,13 @@ def analyse_image(up: Upload, registry: Registry, settings: Settings, thresholds
 
     per_model = {}
     for model_id, det in registry.detectors.items():
-        per_model[model_id] = fuse_passes(det.predict(rgb, tta=settings.tta), settings.fusion_iou,
-                                          settings.single_pass_penalty)
+        fused_passes = fuse_passes(det.predict(rgb, tta=settings.tta), settings.fusion_iou,
+                                   settings.single_pass_penalty)
+        if model_id == "caries_aku" and settings.colour_passes:
+            extra = [det.predict(np.ascontiguousarray(COLOUR_PASSES[name](rgb)))[0]
+                     for name in settings.colour_passes]
+            fused_passes = merge_max([fused_passes, *extra], settings.fusion_iou)
+        per_model[model_id] = fused_passes
     tooth_t = thresholds["tooth"]["t_low"]
     teeth = [d.box.tolist() for d in per_model.get("teeth_dentalai", []) if d.type == "tooth" and d.score >= tooth_t]
     teeth_count = len(teeth) if registry.tooth_model_loaded else None
@@ -71,13 +76,7 @@ def analyse_image(up: Upload, registry: Registry, settings: Settings, thresholds
             return AnalysedImage(ImageResult(view=up.view, analysed=False, width=w, height=h, quality=q,
                                              teeth_detected=teeth_count), None)
 
-    hidden = {"tooth"} | (set() if settings.report_cavity_crack else {"cavity", "crack"})
-    lesions = {m: [d for d in dets if d.type not in hidden] for m, dets in per_model.items()}
-    fused = [d for d in fuse_models(lesions, TYPE_PRIORITY, settings.fusion_iou)
-             if d.score >= thresholds[d.type]["t_low"]]
-    if "caries_aku" in registry.loaded and not settings.alphadent_caries_standalone:
-        # AlphaDent caries only counts as agreement with the phone-trained model (it collapses on phone photos)
-        fused = [d for d in fused if not (d.type == "caries" and d.sources == ["alphadent"])]
+    fused = selection.select(per_model, thresholds, settings, (w, h), "caries_aku" in registry.loaded)
     fused.sort(key=lambda d: (SEVERITY[d.type], -d.score))
     findings = []
     for i, d in enumerate(fused):

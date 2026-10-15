@@ -21,6 +21,7 @@ class RawDet:
     polygon: np.ndarray | None = None                # (N, 2) mask outline, if the model segments
     pass_id: int = 0                                 # 0 = original, 1 = horizontal flip (TTA)
     sources: list[str] = field(default_factory=list)
+    model_scores: dict[str, float] = field(default_factory=dict)   # fused findings: best score per model
 
 
 class Detector(Protocol):

@@ -54,9 +54,26 @@ optional AI model may only add advisory gum and hygiene notes and rephrase the s
 2. **Detection and fusion.** Marks of the same type are merged when they overlap (IoU above 0.55) or one
    lies mostly (60 %) inside the other. The leading model supplies score and shape; agreeing models are
    kept as `sources`.
-3. **What is reported.**
+3. **What is reported** (`app/selection.py`; the evidence for each rule is in [EVAL.md](EVAL.md)).
    - Caries seen only by AlphaDent is dropped when the phone model is loaded: AlphaDent caries measured
-     AP@50 0.006 on phone photos.
+     AP@50 0.006 on phone photos, and only 2 to 5 % of its marks at 0.5 or more lay on labelled decay
+     where the phone model saw nothing.
+   - **Agreement rescue:** a spot where the phone caries model scores 0.20 to 0.48 (below its keep
+     threshold) *and* AlphaDent marks caries at 0.50 or more is kept as Low-confidence decay. On the AKU
+     splits 10 of 13 such spots were labelled decay. The sample is small; the rule is recorded so it can
+     be revisited.
+   - **Decay over filling:** a filling or crown mark on the same spot as a reported decay mark is dropped.
+     On AKU, 22 to 33 % of AlphaDent's fillings lay on labelled decay (brown lesions read as fillings), and
+     a missed lesion is the costlier error.
+   - Fillings and crowns are listed from score 0.55 and never change the triage. From 0.15 AlphaDent
+     marked about 0.5 crowns per AKU photo (a caries clinic population) and read fingertips holding the
+     lips as crowns.
+   - Wear, filling and crown marks touching the frame edge (1 %) are dropped: fingers enter from the edge.
+   - **Grey-world colour pass:** the caries model also runs on a white-balanced copy of each photo and each
+     spot keeps its best score. Its training photos are flash-lit; under warm indoor light it scored obvious
+     decay at 0.2 and the balanced copy at 0.77. On the AKU test split referral with caries rose from 88.1 %
+     to 90.7 % and false referral from 4.0 % to 5.6 %. A CLAHE pass was also measured and left off (false
+     referral about 11 %).
    - Cavity and crack are off by default: precision 0.34 and recall 0.25 even on DentalAI's own test split.
    - Wear is kept from score 0.55. It is not validated on phone photos and over-fires on incisal edges.
 4. **Confidence bands.** Caries thresholds come from the AKU validation curve: keep from 0.48 (recall at
@@ -88,9 +105,9 @@ caries), with the service defaults:
 
 | Measure | Value (95 % CI) |
 | --- | --- |
-| Photos with caries referred for a check-up or dentist | 88.1 % [83.2, 91.7] |
-| Caries-free photos referred anyway | 4.0 % [2.5, 6.5] |
-| Image-level caries sensitivity / specificity | 89.4 % / 95.5 % |
+| Photos with caries referred for a check-up or dentist | 90.7 % [86.2, 93.8] |
+| Caries-free photos referred anyway | 5.6 % [3.7, 8.3] |
+| Image-level caries sensitivity / specificity | 92.0 % / 92.9 % |
 | Caries model alone, mAP@50 (published YOLOv8s baseline 0.841) | 0.764; classes merged 0.895 |
 | Tooth detection (DentalAI test) box / mask AP@50 | 0.739 / 0.775 |
 
@@ -105,6 +122,10 @@ Speed: about 0.2 s per photo for all three models on a T4, about 1 s on an Apple
   validated on phone photos.
 - **Data range:** all measured photos come from two public datasets (AKU: one centre and its patients'
   ages; DentalAI). Real users' phones, lighting, ages and skin tones will differ.
+- **Fingers and lighting:** AlphaDent and the tooth model can read a fingernail as a crown or a tooth; the
+  edge rule and the 0.55 floor reduce this but no finger-labelled photos exist to measure it. Warm, dim
+  indoor light lowers the caries model's scores (its training photos are flash-lit); see the colour
+  passes in EVAL.md.
 - **Labels:** AKU marks caries only, so false wear and restoration marks are not measured. DentalAI tooth
   instances are approximate.
 - **Regions, not tooth numbers:** positions are given as sides and "about the Nth tooth from the middle".

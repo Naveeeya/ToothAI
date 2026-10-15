@@ -1,4 +1,4 @@
-# Tooth-AI Photo Screening service (separate from the OPG app: no Detectron2 here).
+# ToothAI Photo Screening service (separate from the OPG app: no Detectron2 here).
 # Shared pins match requirements-app.txt so tooth_ai/report_pdf.py renders identically.
 ultralytics>=8.3,<9
 torch>=2.2

@@ -28,6 +28,18 @@ The page talks to the API at `PHOTO_API_URL` (default `http://localhost:8001`). 
 Settings are environment variables with the `PHOTO_` prefix, or a `photo_screening/.env` file. See
 [.env.example](.env.example).
 
+### Docker (CPU)
+
+```bash
+docker compose up --build photo-api          # from the repository root; image about 2.4 GB
+```
+
+The weights are mounted read-only from `photo_screening/weights/`, never baked into the image. Measured on
+an M1 with Colima (2 CPUs, 4 GB): about 10 s per photo, against about 1 s natively on MPS, so the native
+path is the one for demos. Give the Docker VM at least 4 GB: with 2 GB the kernel kills the service
+during the first analysis. Colima only shares your home folder by default; if the repository is on an
+external drive, add the weights folder to `mounts` in `~/.colima/default/colima.yaml`.
+
 ## Models and weights
 
 | Model | Finds | How to get it |

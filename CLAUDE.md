@@ -30,7 +30,7 @@ prosthetic), a dental chart and a PDF report.
 | `tooth_ai/report_pdf.py`, `report_md.py` | PDF / Markdown / JSON exports |
 | `tooth_ai/demo.py` | demo mode: cached model detections through the real engine, no Detectron2 |
 | `tooth_ai/evidence.py` | measured numbers, parsed from `paper_eval/results/` |
-| `assets/brand/`, `static/fonts/` | logo/marks/tokens (generated), self-hosted IBM Plex (OFL) |
+| `assets/brand/`, `static/fonts/` | logo/marks/tokens (generated), self-hosted Plus Jakarta Sans + JetBrains Mono (OFL) |
 | `assets/samples/` | de-identified demo OPGs + cached detections |
 | `tools/` | `build_brand.py`, `make_demo_fixtures.py` |
 | `tests/` | pytest: routing fix, regions, notation, engine parity vs paper_eval, reliability |
