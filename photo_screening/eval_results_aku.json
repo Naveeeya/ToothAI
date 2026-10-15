@@ -1,0 +1,341 @@
+{
+  "models": {
+    "alphadent": "361b05760577",
+    "caries_aku": "553193c807ca",
+    "teeth_dentalai": "5d2423634384"
+  },
+  "device": "cuda:0 (Kaggle T4)",
+  "thresholds": {
+    "caries": {
+      "t_low": 0.48,
+      "t_med": 0.55,
+      "t_high": 0.74
+    },
+    "cavity": {
+      "t_low": 0.25,
+      "t_med": 0.45,
+      "t_high": 0.64
+    },
+    "crack": {
+      "t_low": 0.3,
+      "t_med": 0.5,
+      "t_high": 0.5
+    },
+    "wear": {
+      "t_low": 0.55,
+      "t_med": 0.65,
+      "t_high": 0.8
+    },
+    "filling": {
+      "t_low": 0.15,
+      "t_med": 0.4,
+      "t_high": 0.7
+    },
+    "crown": {
+      "t_low": 0.15,
+      "t_med": 0.4,
+      "t_high": 0.7
+    },
+    "tooth": {
+      "t_low": 0.17,
+      "t_med": 0.33,
+      "t_high": 0.5
+    }
+  },
+  "aku_valid": {
+    "configs": [
+      {
+        "config": "original (AlphaDent caries standalone, cavity/crack on, wear from 0.30)",
+        "n_images": 627,
+        "n_analysed": 624,
+        "n_pos": 206,
+        "n_neg": 418,
+        "caries_ap50": 0.883,
+        "caries_box_precision": 0.711,
+        "caries_box_recall": 0.893,
+        "image_sensitivity": 0.951,
+        "image_sensitivity_ci": [
+          0.913,
+          0.973
+        ],
+        "image_specificity": 0.794,
+        "image_specificity_ci": [
+          0.753,
+          0.83
+        ],
+        "referral_rate_with_caries": 0.937,
+        "referral_rate_with_caries_ci": [
+          0.895,
+          0.963
+        ],
+        "false_referral_rate": 0.12,
+        "false_referral_rate_ci": [
+          0.092,
+          0.154
+        ],
+        "findings_per_photo": 3.89,
+        "medium_plus_per_photo": 2.23
+      },
+      {
+        "config": "AlphaDent caries as agreement only",
+        "n_images": 627,
+        "n_analysed": 624,
+        "n_pos": 206,
+        "n_neg": 418,
+        "caries_ap50": 0.896,
+        "caries_box_precision": 0.809,
+        "caries_box_recall": 0.893,
+        "image_sensitivity": 0.937,
+        "image_sensitivity_ci": [
+          0.895,
+          0.963
+        ],
+        "image_specificity": 0.928,
+        "image_specificity_ci": [
+          0.899,
+          0.949
+        ],
+        "referral_rate_with_caries": 0.927,
+        "referral_rate_with_caries_ci": [
+          0.883,
+          0.955
+        ],
+        "false_referral_rate": 0.079,
+        "false_referral_rate_ci": [
+          0.057,
+          0.109
+        ],
+        "findings_per_photo": 3.73,
+        "medium_plus_per_photo": 2.23
+      },
+      {
+        "config": "+ wear from 0.55",
+        "n_images": 627,
+        "n_analysed": 624,
+        "n_pos": 206,
+        "n_neg": 418,
+        "caries_ap50": 0.896,
+        "caries_box_precision": 0.809,
+        "caries_box_recall": 0.893,
+        "image_sensitivity": 0.937,
+        "image_sensitivity_ci": [
+          0.895,
+          0.963
+        ],
+        "image_specificity": 0.928,
+        "image_specificity_ci": [
+          0.899,
+          0.949
+        ],
+        "referral_rate_with_caries": 0.927,
+        "referral_rate_with_caries_ci": [
+          0.883,
+          0.955
+        ],
+        "false_referral_rate": 0.079,
+        "false_referral_rate_ci": [
+          0.057,
+          0.109
+        ],
+        "findings_per_photo": 3.02,
+        "medium_plus_per_photo": 2.23
+      },
+      {
+        "config": "service default (+ cavity/crack off)",
+        "n_images": 627,
+        "n_analysed": 624,
+        "n_pos": 206,
+        "n_neg": 418,
+        "caries_ap50": 0.896,
+        "caries_box_precision": 0.809,
+        "caries_box_recall": 0.893,
+        "image_sensitivity": 0.937,
+        "image_sensitivity_ci": [
+          0.895,
+          0.963
+        ],
+        "image_specificity": 0.928,
+        "image_specificity_ci": [
+          0.899,
+          0.949
+        ],
+        "referral_rate_with_caries": 0.927,
+        "referral_rate_with_caries_ci": [
+          0.883,
+          0.955
+        ],
+        "false_referral_rate": 0.065,
+        "false_referral_rate_ci": [
+          0.045,
+          0.092
+        ],
+        "findings_per_photo": 2.91,
+        "medium_plus_per_photo": 2.22
+      }
+    ],
+    "alphadent_caries_alone": {
+      "ap50": 0.01,
+      "image_sensitivity_at_0.25": 0.65,
+      "image_specificity_at_0.25": 0.677
+    },
+    "quality_gate_rejected": 0.005,
+    "quality_failures": {
+      "resolution": 0,
+      "blur": 3,
+      "exposure": 0
+    },
+    "seconds_per_image": {
+      "alphadent": 0.126,
+      "caries_aku": 0.02,
+      "teeth_dentalai": 0.029
+    }
+  },
+  "aku_test": {
+    "configs": [
+      {
+        "config": "original (AlphaDent caries standalone, cavity/crack on, wear from 0.30)",
+        "n_images": 628,
+        "n_analysed": 622,
+        "n_pos": 226,
+        "n_neg": 396,
+        "caries_ap50": 0.85,
+        "caries_box_precision": 0.697,
+        "caries_box_recall": 0.845,
+        "image_sensitivity": 0.907,
+        "image_sensitivity_ci": [
+          0.862,
+          0.938
+        ],
+        "image_specificity": 0.755,
+        "image_specificity_ci": [
+          0.71,
+          0.795
+        ],
+        "referral_rate_with_caries": 0.894,
+        "referral_rate_with_caries_ci": [
+          0.847,
+          0.928
+        ],
+        "false_referral_rate": 0.131,
+        "false_referral_rate_ci": [
+          0.102,
+          0.168
+        ],
+        "findings_per_photo": 4.06,
+        "medium_plus_per_photo": 2.28
+      },
+      {
+        "config": "AlphaDent caries as agreement only",
+        "n_images": 628,
+        "n_analysed": 622,
+        "n_pos": 226,
+        "n_neg": 396,
+        "caries_ap50": 0.868,
+        "caries_box_precision": 0.818,
+        "caries_box_recall": 0.845,
+        "image_sensitivity": 0.894,
+        "image_sensitivity_ci": [
+          0.847,
+          0.928
+        ],
+        "image_specificity": 0.955,
+        "image_specificity_ci": [
+          0.929,
+          0.971
+        ],
+        "referral_rate_with_caries": 0.889,
+        "referral_rate_with_caries_ci": [
+          0.842,
+          0.924
+        ],
+        "false_referral_rate": 0.066,
+        "false_referral_rate_ci": [
+          0.045,
+          0.094
+        ],
+        "findings_per_photo": 3.86,
+        "medium_plus_per_photo": 2.28
+      },
+      {
+        "config": "+ wear from 0.55",
+        "n_images": 628,
+        "n_analysed": 622,
+        "n_pos": 226,
+        "n_neg": 396,
+        "caries_ap50": 0.868,
+        "caries_box_precision": 0.818,
+        "caries_box_recall": 0.845,
+        "image_sensitivity": 0.894,
+        "image_sensitivity_ci": [
+          0.847,
+          0.928
+        ],
+        "image_specificity": 0.955,
+        "image_specificity_ci": [
+          0.929,
+          0.971
+        ],
+        "referral_rate_with_caries": 0.889,
+        "referral_rate_with_caries_ci": [
+          0.842,
+          0.924
+        ],
+        "false_referral_rate": 0.066,
+        "false_referral_rate_ci": [
+          0.045,
+          0.094
+        ],
+        "findings_per_photo": 3.07,
+        "medium_plus_per_photo": 2.28
+      },
+      {
+        "config": "service default (+ cavity/crack off)",
+        "n_images": 628,
+        "n_analysed": 622,
+        "n_pos": 226,
+        "n_neg": 396,
+        "caries_ap50": 0.868,
+        "caries_box_precision": 0.818,
+        "caries_box_recall": 0.845,
+        "image_sensitivity": 0.894,
+        "image_sensitivity_ci": [
+          0.847,
+          0.928
+        ],
+        "image_specificity": 0.955,
+        "image_specificity_ci": [
+          0.929,
+          0.971
+        ],
+        "referral_rate_with_caries": 0.881,
+        "referral_rate_with_caries_ci": [
+          0.832,
+          0.917
+        ],
+        "false_referral_rate": 0.04,
+        "false_referral_rate_ci": [
+          0.025,
+          0.065
+        ],
+        "findings_per_photo": 2.96,
+        "medium_plus_per_photo": 2.27
+      }
+    ],
+    "alphadent_caries_alone": {
+      "ap50": 0.006,
+      "image_sensitivity_at_0.25": 0.646,
+      "image_specificity_at_0.25": 0.59
+    },
+    "quality_gate_rejected": 0.01,
+    "quality_failures": {
+      "resolution": 0,
+      "blur": 6,
+      "exposure": 0
+    },
+    "seconds_per_image": {
+      "alphadent": 0.133,
+      "caries_aku": 0.02,
+      "teeth_dentalai": 0.028
+    }
+  }
+}

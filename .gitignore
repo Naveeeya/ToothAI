@@ -73,6 +73,7 @@ graphify-out/
 
 # === PHOTO SCREENING ===
 !photo_screening/notebooks/*.ipynb
+photo_screening/notebooks/._*
 photo_screening/weights/*
 !photo_screening/weights/README.md
 photo_screening/.smoke/

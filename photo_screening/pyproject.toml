@@ -1,0 +1,28 @@
+[project]
+name = "tooth-ai-photo-screening"
+version = "0.1.0"
+description = "ToothAI Photo Screening: smartphone intraoral photos to a screening report and OPG triage"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = [".smoke", "weights", "notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = [
+    "EXE",      # the repo sits on an exFAT volume, which reports every file as executable
+    "SIM108",   # ternaries are not always clearer
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["photo_screening", "tooth_ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".."]           # repo root, so `photo_screening` and `tooth_ai` import
+addopts = "-q"
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Form"]

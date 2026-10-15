@@ -1,0 +1,14 @@
+# Whitelist: the photo API image needs only these. Everything else (datasets, checkpoints, venvs) stays out.
+*
+!photo_screening/
+!tooth_ai/
+!assets/
+!static/fonts/
+
+photo_screening/weights/
+photo_screening/.smoke/
+photo_screening/notebooks/
+photo_screening/samples/*.jpg
+**/__pycache__/
+**/._*
+**/.DS_Store

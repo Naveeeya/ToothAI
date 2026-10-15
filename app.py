@@ -10,6 +10,7 @@ single-file app is kept as app_legacy.py (and at git tag paper-eval-v1).
 
 import streamlit as st
 
+from photo_screening.ui import page as photo_screening
 from tooth_ai.ui import components as ui
 from tooth_ai.ui import theme
 from tooth_ai.views import about, analyze, method, performance
@@ -28,6 +29,8 @@ ui.inject_css()
 page = st.navigation(
     [
         st.Page(analyze.render, title="Analyse", icon=":material/radiology:", url_path="analyze", default=True),
+        st.Page(photo_screening.render, title="Photo screening", icon=":material/photo_camera:",
+                url_path="photo-screening"),
         st.Page(method.render, title="How it works", icon=":material/account_tree:", url_path="how-it-works"),
         st.Page(performance.render, title="Performance", icon=":material/monitoring:", url_path="performance"),
         st.Page(about.render, title="About", icon=":material/info:", url_path="about"),

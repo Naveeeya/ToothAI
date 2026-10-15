@@ -1,0 +1,27 @@
+name: Photo screening
+
+on:
+  push:
+    paths: ["photo_screening/**", "tooth_ai/**", ".github/workflows/photo-screening.yml"]
+  pull_request:
+    paths: ["photo_screening/**", "tooth_ai/**", ".github/workflows/photo-screening.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: photo_screening/requirements.txt
+      - name: Install (CPU torch, no weights needed)
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.2" "torchvision>=0.17"
+          pip install -r photo_screening/requirements.txt
+      - name: Lint
+        run: ruff check photo_screening
+      - name: Test
+        working-directory: photo_screening
+        run: python -m pytest

@@ -1,0 +1,44 @@
+# ToothAI services. Photo screening API:   docker compose up --build
+# With local AI observations (Ollama, CPU in Docker; slower than native Ollama on a Mac):
+#                                          docker compose --profile vlm up --build
+# The Streamlit app runs natively for now:  streamlit run app.py   (PHOTO_API_URL=http://localhost:8001)
+# Details: photo_screening/README.md
+
+services:
+  photo-api:
+    build:
+      context: .
+      dockerfile: photo_screening/Dockerfile
+    image: toothai-photo-api:0.1.0
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./photo_screening/weights:/app/photo_screening/weights:ro
+    env_file:
+      - path: photo_screening/.env
+        required: false
+    environment:
+      PHOTO_DEVICE: cpu
+      # Inside compose, AI observations go to the ollama service when the vlm profile is up.
+      PHOTO_VLM_BASE_URL: ${PHOTO_VLM_BASE_URL:-http://ollama:11434/v1}
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["vlm"]
+    volumes:
+      - ollama-models:/root/.ollama
+    ports:
+      - "11434:11434"
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles: ["vlm"]
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "sleep 3 && ollama pull qwen2.5vl:3b"]
+    restart: "no"
+
+volumes:
+  ollama-models:
