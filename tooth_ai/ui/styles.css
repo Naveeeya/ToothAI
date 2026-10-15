@@ -1,0 +1,88 @@
+/* ToothAI — the few rules config.toml can't express. Class names only; no Streamlit
+   test-ids, no !important, and the header stays visible (it holds the sidebar toggle). */
+
+.block-container { padding-top: 4.5rem; padding-bottom: 3rem; max-width: 1480px; }  /* clears the top nav bar */
+
+.ta-eyebrow { font: 500 0.72rem/1.2 "JetBrains Mono", monospace; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #5B6B78; margin: 0 0 0.25rem; }
+.ta-badge { display: inline-block; font: 500 0.7rem/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.04em; padding: 0.3rem 0.5rem; border-radius: 999px;
+  border: 1px solid #C9D4E0; color: #5B6B78; background: #FFFFFF; vertical-align: middle; }
+.ta-badge.demo { border-color: #CA8A04; color: #8A5A00; background: #FEF7E6; }
+.ta-muted { color: #5B6B78; font-size: 0.85rem; }
+.ta-mono { font-family: "JetBrains Mono", monospace; }
+
+/* page header */
+.ta-pagehead { display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+.ta-pagehead h1 { font-size: 1.65rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; padding: 0;
+  color: #0E2236; }
+.ta-pagehead p { margin: 0.2rem 0 0; color: #5B6B78; }
+
+/* reliability banner */
+.ta-banner { border: 1px solid #C9D4E0; border-left-width: 4px; border-radius: 10px;
+  padding: 0.7rem 0.9rem; background: #FFFFFF; margin-bottom: 0.75rem; }
+.ta-banner strong { display: block; color: #0E2236; font-weight: 600; }
+.ta-banner p { margin: 0.2rem 0 0; color: #5B6B78; font-size: 0.86rem; }
+.ta-banner ul { margin: 0.35rem 0 0 1rem; padding: 0; color: #5B6B78; font-size: 0.82rem; }
+.ta-banner.ok { border-left-color: #16A34A; }
+.ta-banner.caution { border-left-color: #CA8A04; background: #FFFBF0; }
+.ta-banner.alert { border-left-color: #C2410C; background: #FFF6F2; }
+.ta-banner.na { border-left-color: #9AA5B1; }
+
+/* KPI tiles */
+.ta-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem;
+  margin-bottom: 0.75rem; }
+.ta-kpi { background: #FFFFFF; border: 1px solid #C9D4E0; border-radius: 10px; padding: 0.6rem 0.75rem; }
+.ta-kpi .v { font: 500 1.25rem/1.15 "JetBrains Mono", monospace; color: #0E2236; white-space: nowrap; }
+.ta-kpi .v small { font-size: 0.8rem; color: #5B6B78; }
+.ta-kpi .l { font-size: 0.74rem; color: #5B6B78; margin-top: 0.15rem; }
+@media (max-width: 640px) { .ta-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* odontogram */
+.ta-chart { background: #FFFFFF; border: 1px solid #C9D4E0; border-radius: 10px;
+  padding: 0.5rem 0.6rem 0.3rem; margin-bottom: 0.75rem; }
+.ta-chart svg { width: 100%; height: auto; display: block; }
+
+/* legend chips */
+.ta-legend { display: flex; flex-wrap: wrap; gap: 0.35rem 0.9rem; font-size: 0.78rem;
+  color: #5B6B78; margin: 0.4rem 0 0.2rem; }
+.ta-legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+.ta-legend i { width: 0.7rem; height: 0.7rem; border-radius: 3px; display: inline-block; }
+.ta-legend i.dash { background: transparent; border: 1.5px dashed #CA8A04; }
+
+/* tooth detail */
+.ta-detail h3 { font-size: 1.05rem; margin: 0 0 0.1rem; }
+.ta-detail .num { font: 500 1.6rem/1 "JetBrains Mono", monospace; color: #0E2236; }
+.ta-why { background: #F7F9FB; border-radius: 8px; padding: 0.55rem 0.7rem; margin-top: 0.5rem;
+  font-size: 0.84rem; color: #33475B; }
+.ta-why ol { margin: 0.2rem 0 0 1.1rem; padding: 0; }
+
+/* empty state */
+.ta-hero { background: #FFFFFF; border: 1px solid #C9D4E0; border-radius: 14px; padding: 2rem 1.5rem;
+  text-align: center; }
+.ta-hero img { width: 64px; height: 64px; }
+.ta-hero h2 { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.03em; margin: 0.8rem 0 0.25rem; }
+.ta-hero p { color: #5B6B78; margin: 0 auto; max-width: 34rem; }
+.ta-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem;
+  margin-top: 1.4rem; text-align: left; }
+.ta-steps div { border: 1px solid #E9EDF1; background: #F7F9FB; border-radius: 10px; padding: 0.7rem 0.8rem; }
+.ta-steps b { display: block; font-size: 0.9rem; color: #0E2236; }
+.ta-steps span { font-size: 0.8rem; color: #5B6B78; }
+.ta-steps em { font: 500 0.7rem "JetBrains Mono", monospace; color: #5B6B78; font-style: normal; }
+@media (max-width: 640px) { .ta-steps { grid-template-columns: 1fr; } }
+
+/* partner strip + footer */
+.ta-partners { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; justify-content: center; }
+.ta-partners img { height: 40px; width: auto; background: #FFFFFF; border: 1px solid #E9EDF1;
+  border-radius: 8px; padding: 4px 8px; }
+.ta-footer { border-top: 1px solid #C9D4E0; margin-top: 2rem; padding-top: 1rem; text-align: center;
+  font-size: 0.78rem; color: #5B6B78; }
+.ta-footer p { margin: 0.5rem 0 0; }
+
+/* metric cards on the performance page */
+.ta-stat { background: #FFFFFF; border: 1px solid #C9D4E0; border-radius: 10px; padding: 0.8rem 0.9rem; height: 100%; }
+.ta-stat .v { font: 500 1.6rem/1.1 "JetBrains Mono", monospace; color: #0E2236; }
+.ta-stat .ci { font: 400 0.76rem "JetBrains Mono", monospace; color: #5B6B78; }
+.ta-stat .l { font-size: 0.84rem; color: #33475B; margin-top: 0.3rem; font-weight: 500; }
+.ta-stat .n { font-size: 0.74rem; color: #5B6B78; }

@@ -3,6 +3,13 @@
 Evaluation exports for the IEEE paper. Nothing here modifies `app.py` or any
 training code.
 
+> **Line references.** Every `app.py:NNN` citation in this folder resolves against
+> the git tag `paper-eval-v1` (commit `c151d5b`): the single-file Streamlit app as it
+> was before the Tooth-AI UI redesign. The redesign moved the pipeline into `tooth_ai/`
+> and kept the old file as `app_legacy.py`; read cited lines with
+> `git show paper-eval-v1:app.py`.
+
+
 ## What runs where
 
 | script | needs | runs on |

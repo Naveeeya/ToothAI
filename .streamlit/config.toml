@@ -1,0 +1,71 @@
+# ToothAI theme (Brand Guidelines v1.0). Tokens: tooth_ai/ui/theme.py (mirrored in assets/brand/tokens.css).
+
+[server]
+enableStaticServing = true   # serves ./static (self-hosted Plus Jakarta Sans + JetBrains Mono, works offline)
+maxUploadSize = 50
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"
+showSidebarNavigation = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#2D6FDB"            # Spark Blue: actions
+backgroundColor = "#F7F9FB"         # Paper
+secondaryBackgroundColor = "#EAF1FC" # Ice
+textColor = "#0E2236"               # Radiograph Navy
+linkColor = "#2D6FDB"
+borderColor = "#C9D4E0"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "12px"
+buttonRadius = "10px"
+font = "Plus Jakarta Sans, sans-serif"
+headingFont = "Plus Jakarta Sans, sans-serif"
+codeFont = "JetBrains Mono, monospace"
+headingFontWeights = [800, 800, 700, 700, 700, 700]
+dataframeHeaderBackgroundColor = "#EAF1FC"
+redColor = "#C2410C"
+orangeColor = "#B45309"
+yellowColor = "#CA8A04"
+blueColor = "#2D6FDB"
+greenColor = "#16A34A"
+chartCategoricalColors = ["#2D6FDB", "#0E2236", "#7FA9F5", "#5B6B78", "#C9D4E0", "#33475B"]
+
+[[theme.fontFaces]]
+family = "Plus Jakarta Sans"
+url = "app/static/fonts/PlusJakartaSans-Regular.ttf"
+weight = 400
+
+[[theme.fontFaces]]
+family = "Plus Jakarta Sans"
+url = "app/static/fonts/PlusJakartaSans-Medium.ttf"
+weight = 500
+
+[[theme.fontFaces]]
+family = "Plus Jakarta Sans"
+url = "app/static/fonts/PlusJakartaSans-Bold.ttf"
+weight = 700
+
+[[theme.fontFaces]]
+family = "Plus Jakarta Sans"
+url = "app/static/fonts/PlusJakartaSans-ExtraBold.ttf"
+weight = 800
+
+[[theme.fontFaces]]
+family = "JetBrains Mono"
+url = "app/static/fonts/JetBrainsMono-Regular.ttf"
+weight = 400
+
+[[theme.fontFaces]]
+family = "JetBrains Mono"
+url = "app/static/fonts/JetBrainsMono-Medium.ttf"
+weight = 500
+
+[theme.sidebar]
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F7F9FB"

@@ -1,0 +1,31 @@
+/* ToothAI design tokens (Brand Guidelines v1.0). Mirror of tooth_ai/ui/theme.py; keep in sync. */
+:root {
+  --navy: #0E2236;          /* Radiograph Navy: primary ink, dark grounds */
+  --spark: #2D6FDB;         /* Spark Blue: the only accent (spark, "AI", actions) */
+  --spark-light: #7FA9F5;   /* the spark on dark */
+  --ice: #EAF1FC;           /* tints, surfaces */
+  --paper: #F7F9FB;         /* backgrounds */
+  --slate: #5B6B78;         /* secondary text */
+  --ink-700: #33475B;       /* body text on paper */
+  --line: #E1E6EC;          /* hairlines */
+  --border: #C9D4E0;        /* borders */
+  --white: #FFFFFF;
+  --viewer-950: #0A0E13;
+
+  /* semantic: viewer + charts only, always paired with a label */
+  --finding-caries: #E5484D;
+  --finding-retained-root: #C2410C;
+  --finding-filling: #3B82F6;
+  --finding-crown: #1D4ED8;
+  --finding-endo: #0F9F8F;
+  --finding-implant: #64748B;
+  --finding-post: #94A3B8;
+  --status-ok: #16A34A;
+  --status-uncertain: #CA8A04;
+  --status-alert: #C2410C;
+  --status-missing: #9AA5B1;
+
+  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;   /* 800 headlines (-3 %), 500/400 text */
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;    /* findings, measurements, labels */
+  --radius: 12px;
+}

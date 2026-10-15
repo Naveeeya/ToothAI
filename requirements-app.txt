@@ -1,0 +1,13 @@
+# Tooth-AI app dependencies (UI + exports). Versions match the Windows venv in venv/.
+# Full mode additionally needs torch 2.5.1 (+cu121) and detectron2 0.6 — install per SETUP_WINDOWS.md.
+streamlit==1.52.2
+numpy==2.2.6
+pandas==2.3.3
+pillow==12.1.0
+opencv-python-headless>=4.10,<4.13
+plotly>=5.24,<7
+reportlab==4.4.7
+
+# dev only: brand asset rendering and tests
+cairosvg>=2.7
+pytest>=8

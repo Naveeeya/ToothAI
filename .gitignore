@@ -67,3 +67,15 @@ dist/
 **/model_final.pth
 # === GRAPHIFY KNOWLEDGE GRAPH (generated; .graphifyignore stays tracked) ===
 graphify-out/
+
+# === macOS AppleDouble files (external drive) ===
+._*
+
+# === PHOTO SCREENING ===
+!photo_screening/notebooks/*.ipynb
+photo_screening/weights/*
+!photo_screening/weights/README.md
+photo_screening/.smoke/
+photo_screening/samples/*
+!photo_screening/samples/README.md
+photo_screening/.env

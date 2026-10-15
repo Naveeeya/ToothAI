@@ -1,83 +1,76 @@
-# 🦷 Tooth-AI: Product Overview
+# Tooth-AI — product overview
 
-**Tooth-AI** is a premium, AI-powered dental diagnostic system designed to assist dental professionals in analyzing panoramic X-rays. By leveraging advanced computer vision models (Detectron2), it automates the detection of teeth and pathological anomalies with high precision.
+**Tooth-AI: Integrated Deep Learning and Geometric Reasoning System for Detection, Segmentation,
+Numbering and Anatomical Mapping of Teeth in Panoramic Dental Radiographs.**
 
-## 🌟 Key Features
+*Every tooth, found and explained.*
 
-### 1. Multi-Model Intelligence
-Tooth-AI offers flexibility through specialized AI models tailored for different clinical needs:
-*   **Hybrid 9-Class Model (Standard)**:
-    *   **Purpose**: Complete dental charting.
-    *   **Detects**: Both **Teeth** (for FDI numbering) and **Anomalies**.
-    *   **Best For**: General checkups and generating full dental charts.
-*   **RTX4060 48k Model (High-Sensitivity)**:
-    *   **Purpose**: Focused pathology detection.
-    *   **Detects**: **Anomalies Only** (Caries, Crowns, Fillings, Root Canals).
-    *   **Feature**: Automatically filters out normal teeth (IDs 0-33) to focus purely on issues.
-    *   **Best For**: Second opinions on pathology and identifying subtle issues.
+Tooth-AI reads a panoramic radiograph (OPG) and returns a mask for every tooth, its FDI number,
+the findings on it and a dental chart, with a PDF report. Detection is learned. Numbering is
+geometric, so every number can be explained, and every case carries a numbering-reliability
+flag. It is a research prototype for teaching and research, and a second read for a dentist.
+It is not a medical device.
 
-### 2. Smart Ensemble Inference 🧠
-The system doesn't just look at the image once. It employs a **"Smart Ensemble"** strategy to ensure robustness:
-*   **Standard Pass**: Analyzes the original image.
-*   **CLAHE Pass**: Applies *Contrast Limited Adaptive Histogram Equalization* to see through spinal shadows (anterior teeth).
-*   **Gamma Pass**: Brightens dark areas to recover details in underexposed quadrants.
-*   **Flip Augmentation**: Flips the image horizontally to break directional bias, then fuses results.
-*   **Weighted Box Fusion (WBF)**: Combines all these passes into a single, highly accurate set of predictions.
+A collaboration between Bharati Vidyapeeth (Deemed to be University) College of Engineering
+and Bharati Vidyapeeth Dental College and Hospital, Pune, under the C-CAMP Inter-Institutional
+Biomedical Innovations Programme (AICTE–C-CAMP IBIP).
 
-### 3. Advanced Visualization 🎨
-We prioritize clarity and readability:
-*   **Mask-Only Display**: No clutter from bounding boxes. We use precise segmentation masks conforming to the shape of the tooth/anomaly.
-*   **Color Theory**: 
-    *   🟢 **Teeth**: Subtle Green (Healthy/Calming).
-    *   🔴 **Caries**: Red (Alert/Urgent).
-    *   🟡 **Crowns**: Gold/Yellow (Restoration).
-    *   🟠 **Fillings**: Orange (Treatment).
-*   **Smart Labeling**: Labels automatically shift positions to avoid overlapping each other, ensuring legibility even in crowded areas.
+Brand and UX rules are in [`docs/BRAND_AND_UX_SPEC.md`](docs/BRAND_AND_UX_SPEC.md).
 
-### 4. Automated Reporting 📋
-Generates professional clinical reports instantly:
-*   **FDI Dental Chart**: Automatically assigns numbers (ISO 3950 notation) to detected teeth.
-*   **Findings Table**: detailed list of every anomaly with confidence scores.
-*   **Unmarked Anomalies**: Lists detected issues that couldn't be linked to a specific tooth (e.g., in edentulous areas).
-*   **PDF Download**: One-click generation of a patient-ready PDF report including the processed X-ray image.
+## What the app does
 
----
+| Page | Purpose |
+|---|---|
+| **Analyze** | Upload an OPG or open a sample case. You get a dark radiograph viewer with layer toggles (masks, numbers, findings, geometry), colouring by finding or by quadrant, zoom and click-to-inspect. Alongside it are a reliability banner, a 32-tooth dental chart, a tooth detail card with **Why this number?**, tables, and PDF, JSON, PNG and Markdown exports. |
+| **How it works** | The pipeline, and why numbering is geometric. |
+| **Performance** | Measured results with confidence intervals, read live from `paper_eval/results/`. |
+| **About** | Institutions, data licence, citation, disclaimer. |
 
-## 🔍 Supported Detections
+There are two modes. **Full chart** numbers the teeth and maps findings to them. **Findings
+only** skips numbering. Notation can be FDI (the default) or Universal.
 
-| Class Name | Type | Description |
-| :--- | :--- | :--- |
-| **Tooth** | Anatomy | Normal dentition (filtered in RTX mode) |
-| **Caries** | Pathology | Tooth decay / cavities |
-| **Crown** | Restoration | Artificial tooth cap (Gold/Metal/Ceramic) |
-| **Filling** | Restoration | Restorative material (Amalgam/Composite) |
-| **Root Canal** | Treatment | Endodontic treatment (Obturation/Filling) |
-| **Implant** | Restoration | Artificial tooth root |
-| **Retained Root** | Pathology | Root fragment left after extraction |
-| **Metal Post** | Restoration | Post-and-core restoration |
+## Pipeline
 
----
+1. **Detection.** Mask R-CNN (ResNet-50, 9 classes: tooth plus 8 finding types) runs on the
+   original image and on a CLAHE contrast-enhanced copy. The two passes are fused. In Full chart
+   mode a second model (41 classes) adds findings.
+2. **Geometric numbering.** Distance-IoU NMS removes duplicates, the jaws are split at the median
+   tooth height, and each jaw is ordered from the patient's right to left. FDI numbers are then
+   assigned in sequence; a gap wider than 1.6× a tooth's width skips numbers for missing teeth.
+3. **Anatomical rules.** No FDI number may be used twice, a mouth has at most 32 teeth, and caries
+   next to metal restorations is down-weighted.
+4. **Mapping.** Each finding is attached to the tooth it overlaps. Findings that overlap no tooth
+   are listed separately.
 
-## 🛠️ Technical Workflow
+## Detected findings
 
-1.  **Image Upload**: User provides a panoramic X-ray (JPG/PNG).
-2.  **Preprocessing**: Image is converted to BGR, resized if necessary.
-3.  **AI Inference**: The selected model (Hybrid or RTX4060) processes the image using the Smart Ensemble pipeline.
-4.  **Geometric Analysis** (Hybrid Mode):
-    *   **NMS**: Removes duplicate detections.
-    *   **Jaw Splitting**: Uses a Y-Median split to separate Upper vs. Lower jaw.
-    *   **FDI Sorting**: spatially sorts teeth to assign correct quadrant numbers (11-18, 21-28, etc.).
-5.  **Anomaly Mapping**: Anomalies are geometrically mapped to the nearest overlapping tooth.
-6.  **Reporting**: Final results are compiled into visual overlays and PDF documents.
+Caries, retained root, filling, crown, root canal filling, root canal obturation, implant,
+and prefabricated metal post.
 
----
+## Measured performance
 
-## 🚀 How to Use
+Measured on 716 held-out OPGs with no training overlap, in the configuration the app runs.
+Numbering is scored on 117 images with consistent labels.
 
-1.  **Launch the App**: `streamlit run app.py`
-2.  **Select Model**: Open the Sidebar ⚙️ and choose:
-    *   *Hybrid 9-Class* for full charting.
-    *   *RTX4060 48k* for pathology check.
-3.  **Upload Image**: Drag & Drop your X-ray.
-4.  **Review**: Check the "AI Analysis Results" panel for visualization and metrics.
-5.  **Download Report**: Click "Download Report (PDF)" to save the findings.
+| Measure | Result |
+|---|---|
+| Tooth detection recall | 94.9 % [94.0, 95.8] |
+| Correct jaw, given detected | 97.9 % |
+| FDI correct, complete arches (n = 67) | 76.6 % [70.7, 82.2] |
+| FDI correct, partial arches (n = 50) | 35.4 % [27.7, 42.8] |
+| Geometry vs a network that numbers teeth directly (single pass, paired) | +18.2 pp [+11.8, +24.3] |
+| AP, generic tooth class | 72.5 |
+
+The partial-arch drop is the main limitation: one missing tooth shifts every later number in that
+jaw. The app flags it on every case. Finding accuracy has not been validated. Full details are in
+`paper_eval/AUDIT.md`.
+
+## Run
+
+```bash
+pip install -r requirements-app.txt
+TOOTH_AI_DEMO=1 streamlit run app.py   # sample cases, no Detectron2 needed
+streamlit run app.py                   # full mode: torch + detectron2 + weights in output/
+```
+
+The previous single-file app (branded "Dent-AI") is kept as `app_legacy.py` for comparison.

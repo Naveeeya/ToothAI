@@ -1,0 +1,14 @@
+[
+ {
+  "name": "sample_01",
+  "description": "Complete dentition"
+ },
+ {
+  "name": "sample_02",
+  "description": "Complete arches with restorations"
+ },
+ {
+  "name": "sample_03",
+  "description": "Partial arches with restorations"
+ }
+]
