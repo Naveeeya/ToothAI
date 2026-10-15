@@ -86,7 +86,7 @@ class VlmStatus(BaseModel):
 
 
 class ScreeningReport(BaseModel):
-    report_id: str
+    report_id: str = Field(pattern=r"^[A-Za-z0-9_-]{1,40}$", description="12 hex characters from the service")
     created_at: datetime
     app_version: str
     model_versions: dict[str, str]

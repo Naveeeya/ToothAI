@@ -77,6 +77,8 @@ class Settings(BaseSettings):
                                                  "CLAHE doubled false referrals (EVAL.md)")
     max_side: int = 1280
     max_upload_mb: int = 15
+    max_report_mb: int = Field(40, description="JSON body limit for /report.pdf (five annotated PNGs fit)")
+    busy_wait_s: float = Field(3.0, description="how long a request waits for the running analysis before 503")
     fusion_iou: float = 0.55                      # same IoU as the OPG pipeline's box fusion
     single_pass_penalty: float = 0.6              # TTA: detections seen in one pass only (as in the OPG pipeline)
     thresholds_json: Path | None = Field(None, description="optional override file for per-type thresholds")

@@ -206,6 +206,8 @@ def render() -> None:
     with st.sidebar:
         st.html('<div class="ta-eyebrow">Photos</div>')
         consent = st.checkbox("Process my photos for this session only; don't store them", key="ps_consent")
+        st.caption("Mouth only: keep your full face, name tags and anything else that identifies you out of "
+                   "the photos. Location and camera details are removed before analysis.")
         photos: dict[str, tuple[str, bytes, str]] = {}
         for view, label, helptext in SLOTS:
             f = st.file_uploader(label, type=["jpg", "jpeg", "png", "heic", "heif"], key=f"ps_up_{view}",
@@ -254,6 +256,8 @@ def render() -> None:
         with st.spinner("Checking photo quality and analysing" + note):
             try:
                 st.session_state["ps_report"] = client.analyze(photos, use_vlm=use_vlm, mirrored=mirrored)
+            except client.PhotoApiBusy as e:
+                st.warning(str(e), icon=":material/hourglass_top:")
             except client.PhotoApiError as e:
                 st.error(str(e), icon=":material/error:")
 

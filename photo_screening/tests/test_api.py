@@ -121,3 +121,24 @@ def test_alphadent_only_caries_is_dropped_when_the_phone_model_is_loaded(setting
     rep = ScreeningReport.model_validate(_client(settings, detectors).post(f"{PREFIX}/analyze", files=files).json())
     # the AlphaDent-only mark is gone; the agreed one stays
     assert [f.sources for f in rep.images[0].findings] == [["alphadent", "caries_aku"]]
+
+
+def test_a_second_analysis_is_told_the_service_is_busy(settings):
+    c = _client(settings.model_copy(update={"busy_wait_s": 0.05}), ALPHADENT)
+    assert main._inference_lock.acquire(timeout=1)       # someone else's analysis is running
+    try:
+        r = c.post(f"{PREFIX}/analyze", files={"front": ("f.jpg", jpeg_bytes(mouth_rgb()), "image/jpeg")})
+    finally:
+        main._inference_lock.release()
+    assert r.status_code == 503 and r.headers["retry-after"] == "30" and "Try again" in r.json()["detail"]
+    ok = c.post(f"{PREFIX}/analyze", files={"front": ("f.jpg", jpeg_bytes(mouth_rgb()), "image/jpeg")})
+    assert ok.status_code == 200                           # the lock is released after a busy reply
+
+
+def test_report_json_is_bounded_and_ids_are_safe(settings):
+    c = _client(settings.model_copy(update={"max_report_mb": 4}), ALPHADENT)
+    rep = c.post(f"{PREFIX}/analyze", files={"front": ("f.jpg", jpeg_bytes(mouth_rgb()), "image/jpeg")}).json()
+    big = dict(rep, summary_text="x" * (5 * 1024 * 1024))
+    assert c.post(f"{PREFIX}/report.pdf", json=big).status_code == 413
+    for bad in ('x"; filename="evil.exe', "a\r\nSet-Cookie: x=1", "<img/>", "x" * 41):
+        assert c.post(f"{PREFIX}/report.pdf", json=dict(rep, report_id=bad)).status_code == 422

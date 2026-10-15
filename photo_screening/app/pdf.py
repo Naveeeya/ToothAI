@@ -140,7 +140,7 @@ def _view_block(im: ImageResult, st: dict, fonts: dict) -> list:
     rows = [["#", "Finding", "Where", "Confidence"]]
     for f in im.findings:
         where = f.region + (f" ({f.tooth_hint})" if f.tooth_hint else "")
-        rows.append([Paragraph(f"<font color='{COLORS[f.type]}' name='{fonts['mono_medium']}'>{f.id}</font>",
+        rows.append([Paragraph(f"<font color='{COLORS[f.type]}' name='{fonts['mono_medium']}'>{_e(f.id)}</font>",
                                st["cellmono"]),
                      Paragraph(_e(LABELS[f.type].capitalize()), st["cell"]), Paragraph(_e(where), st["cell"]),
                      Paragraph(_e(f.band), st["cell"])])

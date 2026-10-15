@@ -4,6 +4,8 @@ streamlit==1.52.2
 numpy==2.2.6
 pandas==2.3.3
 pillow==12.1.0
+pillow-heif>=0.18                # iPhone HEIC photos on the Photo screening page
+requests>=2.31                   # Photo screening page -> photo API
 opencv-python-headless>=4.10,<4.13
 plotly>=5.24,<7
 reportlab==4.4.7

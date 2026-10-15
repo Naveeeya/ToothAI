@@ -3,6 +3,8 @@
 import base64
 import hashlib
 import io
+import os
+import threading
 import traceback
 from datetime import datetime
 
@@ -11,7 +13,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageOps
 
 from tooth_ai.analysis import (DEFAULT_FINDINGS_THRESHOLD, DEFAULT_TEETH_THRESHOLD, MODEL_VERSION,
                                MODES, analyze)
@@ -19,11 +21,27 @@ from tooth_ai.demo import analyze_sample, demo_requested, detectron2_available, 
 from tooth_ai.notation import label as tooth_label, tooth_name
 from tooth_ai.render import DEFAULT_LAYERS, LAYERS, render_overlay
 from tooth_ai.report_md import region, to_json, to_markdown
+from tooth_ai.report_pdf import safe_case_id
 from tooth_ai.ui import components as ui
 from tooth_ai.ui import theme
 
 VIEWER_MAX_W = 1600
 MAX_CACHED = 6
+MAX_PIXELS = 60_000_000          # far above any OPG; bigger files are refused before decoding
+
+
+@st.cache_resource(show_spinner=False)
+def _analysis_lock() -> threading.Lock:
+    """One model analysis at a time per server process (the public server has 2 CPU cores)."""
+    return threading.Lock()
+
+
+def _read_upload(data: bytes) -> np.ndarray:
+    """Pixels only: orientation applied, metadata (EXIF, comments, ICC) discarded with the file object."""
+    with Image.open(io.BytesIO(data)) as im:
+        if im.width * im.height > MAX_PIXELS:
+            raise ValueError("image too large")
+        return np.array(ImageOps.exif_transpose(im).convert("RGB"))
 
 
 # ------------------------------------------------------------------ model loading
@@ -184,9 +202,14 @@ def render():
     # ---------------- sidebar: the case
     with st.sidebar:
         st.html('<div class="ta-eyebrow">Case</div>')
+        consent = demo or st.checkbox("Process this radiograph for this session only; don't store it",
+                                      key="ta_consent")
+        if not demo:
+            st.caption("De-identified images only: crop out or cover any name, date of birth or ID printed on "
+                       "the radiograph. File details are removed before analysis.")
         upload = st.file_uploader(
             "Panoramic radiograph (OPG)", type=["jpg", "jpeg", "png", "bmp"], key="ta_upload",
-            disabled=demo,
+            disabled=demo or not consent,
             help="Demo mode analyses the bundled sample cases only." if demo else
                  "JPG, PNG or BMP. Images are processed in memory and not stored.")
         sample = None
@@ -194,8 +217,9 @@ def render():
             sample = st.pills("Sample cases", [s["name"] for s in samples], key="ta_sample",
                               format_func=lambda n: next(s["description"] for s in samples if s["name"] == n),
                               help="De-identified validation images with the model's own cached detections.")
-        case_id = st.text_input("Case ID", key="ta_case", max_chars=40,
-                                placeholder="Optional. No patient names.")
+        case_id = safe_case_id(st.text_input("Case ID", key="ta_case", max_chars=40,
+                                             placeholder="Optional. No patient names.",
+                                             help="Letters, digits, spaces and _ . - only."))
         mode = st.segmented_control("Analysis", list(MODES), default="Full chart", key="ta_mode",
                                     help="Full chart numbers every tooth and maps findings to it. "
                                          "Findings only skips numbering.") or "Full chart"
@@ -214,10 +238,10 @@ def render():
 
     # ---------------- input
     image_rgb, source_key = None, None
-    if upload is not None and not demo:
+    if upload is not None and not demo and consent:
         data = upload.getvalue()
         try:
-            image_rgb = np.array(Image.open(io.BytesIO(data)).convert("RGB"))
+            image_rgb = _read_upload(data)
         except Exception:
             st.error("This file could not be read as an image. Use JPG, PNG or BMP.", icon=":material/broken_image:")
             ui.footer()
@@ -261,6 +285,12 @@ def render():
         if sample and source_key.startswith("sample:"):
             result = analyze_sample(sample, mode, teeth_t, find_t)
         else:
+            lock = _analysis_lock()
+            if not lock.acquire(blocking=False):
+                st.warning("ToothAI is analysing another radiograph. Try again in a minute.",
+                           icon=":material/hourglass_top:")
+                ui.footer()
+                return
             status = st.status("Analysing radiograph", expanded=True)
             try:
                 status.write("Loading models")
@@ -274,10 +304,13 @@ def render():
                 status.update(label="Analysis failed", state="error", expanded=True)
                 st.error("The analysis could not finish. Check the image and try again.",
                          icon=":material/error:")
-                with st.expander("Technical details"):
-                    st.code("".join(traceback.format_exception(exc)))
+                if os.environ.get("TOOTH_AI_DEBUG"):      # never show stack traces on the public server
+                    with st.expander("Technical details"):
+                        st.code("".join(traceback.format_exception(exc)))
                 ui.footer()
                 return
+            finally:
+                lock.release()
         _cache_put(key, result)
 
     _consume_events(result)

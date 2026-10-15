@@ -2,7 +2,7 @@
 
 [server]
 enableStaticServing = true   # serves ./static (self-hosted Plus Jakarta Sans + JetBrains Mono, works offline)
-maxUploadSize = 50
+maxUploadSize = 15            # MB; photos and OPGs are well under this
 
 [client]
 toolbarMode = "minimal"

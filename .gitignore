@@ -80,3 +80,15 @@ photo_screening/.smoke/
 photo_screening/samples/*
 !photo_screening/samples/README.md
 photo_screening/.env
+
+# === GENERATED OUTPUTS (may hold patient-derived images or test-image names) ===
+output/*.txt
+output/*.json
+output/best_anomaly_images/
+output/rank1_reports/
+paper_eval/kaggle/bundle/
+paper_eval/kaggle/bundle_code/
+ap_summary.json
+
+# === LOCAL TOOLING ===
+.claude/

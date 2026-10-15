@@ -29,7 +29,7 @@ import tooth_ai
 from tooth_ai import evidence
 from tooth_ai.analysis import MODEL_VERSION
 from tooth_ai.evidence import pct
-from tooth_ai.notation import QUADRANT_NAMES, label as tooth_label, tooth_name
+from tooth_ai.notation import label as tooth_label, tooth_name
 from tooth_ai.report_md import region
 from tooth_ai.ui import theme
 from tooth_ai.ui.theme import FDI_ROW_LOWER, FDI_ROW_UPPER, PARTNER_LOGOS, SEVERITY
@@ -75,6 +75,11 @@ def _styles(f):
         "cell": ParagraphStyle("cell", **{**base, "fontSize": 8.4, "leading": 11}),
         "cellmono": ParagraphStyle("cellmono", **{**base, "fontName": f["mono"], "fontSize": 8.4, "leading": 11}),
     }
+
+
+def safe_case_id(case_id) -> str:
+    """Letters, digits, space, '_', '.', '-'; at most 40 characters. Everything else is dropped."""
+    return re.sub(r"[^A-Za-z0-9 _.\-]", "", str(case_id or ""))[:40].strip()
 
 
 def _png(rgb_array, max_width=2000):
@@ -234,8 +239,9 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
     """Return the PDF as bytes."""
     fonts = _register_fonts()
     st = _styles(fonts)
-    # Case IDs are typed by the user: keep a safe character set (they reach the footer and PDF metadata).
-    case_id = re.sub(r"[^A-Za-z0-9 _.\-]", "", str(case_id or ""))[:40]
+    # Case IDs are typed by the user: allow-list the characters (they reach the footer and PDF metadata),
+    # then escape wherever one is placed in markup.
+    case_id = safe_case_id(case_id)
     created = created or datetime.now()
     case_line = f"Case {case_id}" if case_id else created.strftime("%d %b %Y %H:%M")
     buf = io.BytesIO()
@@ -257,8 +263,8 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
         ["Model", MODEL_VERSION if result.source == "model" else "Demo: cached model detections",
          "Findings", str(len(result.findings))],
     ]
-    mt = Table([[Paragraph(f"<font color='{theme.INK_500}'>{a}</font>", st["small"]), Paragraph(escape(str(b)), st["cell"]),
-                 Paragraph(f"<font color='{theme.INK_500}'>{c}</font>", st["small"]), Paragraph(escape(str(e)), st["cell"])]
+    mt = Table([[Paragraph(f"<font color='{theme.INK_500}'>{escape(str(a))}</font>", st["small"]), Paragraph(escape(str(b)), st["cell"]),
+                 Paragraph(f"<font color='{theme.INK_500}'>{escape(str(c))}</font>", st["small"]), Paragraph(escape(str(e)), st["cell"])]
                 for a, b, c, e in meta],
                colWidths=[24 * mm, 66 * mm, 20 * mm, CONTENT_W - 110 * mm])
     mt.setStyle(TableStyle([("LINEBELOW", (0, 0), (-1, -1), 0.4, SLATE_100),
@@ -287,25 +293,25 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
 
     # Per-tooth table
     if result.teeth:
-        story += [PageBreak(), Paragraph(f"Teeth ({len(result.teeth)} of 32 detected)", st["h2"])]
+        story += [PageBreak(), Paragraph(escape(f"Teeth ({len(result.teeth)} of 32 detected)"), st["h2"])]
         rows = [["Tooth", "Name", "Findings", "Score"]]
         for t in result.teeth:
             f = ", ".join(x["type"] + (" (near metal)" if x.get("near_metal") else "") for x in t["findings"]) or "—"
             rows.append([Paragraph(escape(str(tooth_label(t["fdi"], notation))), st["cellmono"]),
                          Paragraph(escape(str(tooth_name(t["fdi"]))), st["cell"]), Paragraph(escape(f), st["cell"]),
-                         Paragraph(f"{t['score']:.2f}", st["cellmono"])])
+                         Paragraph(escape(f"{t['score']:.2f}"), st["cellmono"])])
         story.append(_table(rows, [16 * mm, 62 * mm, CONTENT_W - 96 * mm, 18 * mm], fonts))
 
     if result.unassigned:
         story += [Paragraph("Findings not mapped to a tooth", st["h2"])]
         rows = [["Finding", "Region", "Score"]]
         rows += [[Paragraph(escape(str(a["class_name"])), st["cell"]), Paragraph(escape(region(a["box"], w)), st["cell"]),
-                  Paragraph(f"{a['score']:.2f}", st["cellmono"])] for a in result.unassigned]
+                  Paragraph(escape(f"{a['score']:.2f}"), st["cellmono"])] for a in result.unassigned]
         story.append(_table(rows, [60 * mm, CONTENT_W - 78 * mm, 18 * mm], fonts, header_bg=INK_700))
 
     story += [KeepTogether([
         Paragraph("Method", st["h2"]),
-        Paragraph(f"<i>{tooth_ai.FULL_TITLE}</i>.", st["body"]), Spacer(1, 2 * mm),
+        Paragraph(f"<i>{escape(tooth_ai.FULL_TITLE)}</i>.", st["body"]), Spacer(1, 2 * mm),
         Paragraph("A Mask R-CNN network segments every tooth and finding on the original image and on a "
                   "contrast-enhanced (CLAHE) copy; the two passes are fused. A geometric engine then "
                   "splits the jaws, orders the teeth along each arch and assigns FDI numbers, skipping "
@@ -313,14 +319,14 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
                   "overlap, and anatomical rules remove duplicate numbers and down-weight caries next to "
                   "metal restorations.", st["body"]),
         Paragraph("Limitations", st["h2"]),
-        Paragraph(f"Measured on 716 held-out panoramic radiographs in the configuration this report "
-                  f"uses: tooth detection recall {pct(ev['recall'])} and jaw assignment {pct(ev['jaw'])}. "
-                  f"FDI numbering was {pct(ev['complete'])} accurate on complete arches but "
-                  f"{pct(ev['partial'])} on partial arches, because one missing tooth shifts every later "
-                  "number in that jaw. Finding (caries, restoration) accuracy has not been validated. "
-                  "Region labels refer to the image: its left side is the patient's right.", st["body"]),
+        Paragraph(escape(f"Measured on 716 held-out panoramic radiographs in the configuration this report "
+                         f"uses: tooth detection recall {pct(ev['recall'])} and jaw assignment {pct(ev['jaw'])}. "
+                         f"FDI numbering was {pct(ev['complete'])} accurate on complete arches but "
+                         f"{pct(ev['partial'])} on partial arches, because one missing tooth shifts every later "
+                         "number in that jaw. Finding (caries, restoration) accuracy has not been validated. "
+                         "Region labels refer to the image: its left side is the patient's right."), st["body"]),
         Spacer(1, 4 * mm),
-        Paragraph(f"<font name='{fonts['bold']}'>{tooth_ai.DISCLAIMER}</font>", st["body"]),
+        Paragraph(f"<font name='{fonts['bold']}'>{escape(tooth_ai.DISCLAIMER)}</font>", st["body"]),
     ])]
 
     doc.build(story, canvasmaker=_numbered_canvas(fonts, case_line))
