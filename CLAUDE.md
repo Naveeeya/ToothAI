@@ -80,6 +80,11 @@ partial 35.6 %. Single pass beats two passes (+3.65 pp FDI, paired) — a candid
   paired (64.5 % vs 46.3 %); most of the gap is detection, not numbering.
 - AP-Tooth (segm) **72.5**. Latency: 0.23 s/image single pass, 0.57–0.61 s two-pass (T4).
 
+Engine v2 (`tooth_ai/engine_v2.py`, opt-in; `paper_eval/results/engine_v2.csv`, designed on the validation
+split, `paper_eval/engine_lab.py` on cached outputs): FDI **85.8 %** (complete 90.6 %, partial **77.4 %**),
+recall **95.5 %**; paired vs v1 FDI **+24.2 pp [+18.6, +30.0]**. v1 remains `DEPLOYED` and the app default
+until the paper is updated; `TOOTH_AI_ENGINE=v2` switches a deployment's default.
+
 **Never show or write:** 87 % / 85–90 % FDI, 0.78 mask IoU, 92 % quadrant accuracy,
 "< 500 ms", "4-pass Smart Ensemble", "EfficientNet refinement", "6 production models",
 any anomaly/caries accuracy, "clinically validated", "95 % time reduction". These were

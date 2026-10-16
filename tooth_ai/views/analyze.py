@@ -27,6 +27,8 @@ from tooth_ai.ui import theme
 
 VIEWER_MAX_W = 1600
 MAX_CACHED = 6
+# The published engine is the default until the paper reports v2; TOOTH_AI_ENGINE=v2 flips it for a deployment.
+DEFAULT_ENGINE = os.environ.get("TOOTH_AI_ENGINE", "v1") if os.environ.get("TOOTH_AI_ENGINE") in ("v1", "v2") else "v1"
 MAX_PIXELS = 60_000_000          # far above any OPG; bigger files are refused before decoding
 
 
@@ -230,7 +232,7 @@ def render():
             find_t = st.slider("Finding score", 0.10, 0.80, DEFAULT_FINDINGS_THRESHOLD, 0.05, key="ta_ft",
                                help="Minimum detection score for a finding.")
         engine = st.segmented_control(
-            "Numbering", ["v1", "v2"], default="v1", key="ta_engine",
+            "Numbering", ["v1", "v2"], default=DEFAULT_ENGINE, key="ta_engine",
             format_func=lambda e: {"v1": "Published", "v2": "Improved (beta)"}[e],
             help="Published is the engine measured in the paper. Improved cleans up before numbering, "
                  "numbers outward from the midline and never drops a detected tooth (paper_eval/engine_lab.py)."

@@ -101,3 +101,24 @@ def test_template_is_learned_and_monotonic():
     for jaw in ("upper", "lower"):
         mean, std = V2.arch_template()[jaw]
         assert len(mean) == 8 and all(b > a for a, b in zip(mean, mean[1:])) and (std > 0).all()
+
+
+def test_messy_detections_never_crash():
+    """Random boxes (overlapping, clustered, one-sided, tiny jaws) through the shipped settings: no exception,
+    at most 32 teeth and 16 per jaw, every number a valid FDI tooth, every output one of the input boxes."""
+    import numpy as np
+    rng = np.random.default_rng(20261017)
+    for _ in range(200):
+        n = int(rng.integers(0, 45))
+        teeth = []
+        for _ in range(n):
+            x, y = rng.uniform(0, 960), rng.uniform(100, 400)
+            w, h = rng.uniform(10, 80), rng.uniform(40, 120)
+            teeth.append({"box": [x, y, x + w, y + h], "score": float(rng.uniform(0.2, 1)), "mask": None,
+                          "class_name": "Tooth", "class_id": 0})
+        nms = E.apply_nms(copy.deepcopy(teeth), iou_threshold=0.4)
+        out = V2.number_teeth(nms, **V2.DEFAULTS)
+        assert len(out) <= 32 and all(t["fdi"] in SLOTS for t in out)
+        assert sum(t["quadrant"] in (1, 2) for t in out) <= 16 and sum(t["quadrant"] in (3, 4) for t in out) <= 16
+        boxes = [tuple(t["box"]) for t in nms]
+        assert all(tuple(t["box"]) in boxes for t in out)

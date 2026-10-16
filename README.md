@@ -32,10 +32,24 @@ Every number names the configuration it comes from. Nothing here is estimated.
 | Jaw, given the tooth was detected | 97.9 % |
 | FDI numbering, end to end | 61.6 %; complete arches 76.6 % [70.7, 82.2] (n = 67), partial arches 35.4 % [27.7, 42.8] (n = 50) |
 
-The partial-arch collapse is the headline limitation: one missing tooth shifts every later number in that
-jaw. A single pass with the routing fix (`single_pass_fix_routing`, evaluation only, not deployed) measured
-FDI 64.5 % [58.7, 70.1], +2.88 pp [+0.09, +5.90] paired. Finding (caries, restoration) accuracy on OPGs has
-not been validated.
+The partial-arch collapse is the headline limitation of the published engine: one missing tooth shifts every
+later number in that jaw. A single pass with the routing fix (`single_pass_fix_routing`, evaluation only)
+measured FDI 64.5 % [58.7, 70.1], +2.88 pp [+0.09, +5.90] paired.
+
+**Improved numbering engine (`v2`, opt-in on the Analyse page; `tooth_ai/engine_v2.py`).** Designed on the
+validation split, reported once on the same test images ([`paper_eval/results/engine_v2.csv`](paper_eval/results/engine_v2.csv)):
+
+| Measure | Published (`v1`) | Improved (`v2`) | Paired difference |
+| --- | --- | --- | --- |
+| FDI, 117 canonical images | 61.6 % | 85.8 % | +24.2 pp [+18.6, +30.0] |
+| FDI, complete arches (67) | 76.6 % | 90.6 % | +14.0 pp [+7.7, +20.3] |
+| FDI, partial arches (50) | 35.4 % | 77.4 % | +42.0 pp [+33.5, +50.6] |
+| Tooth detection recall, full arches (93) | 94.3 % | 95.5 % | +1.2 pp [+0.7, +1.7] |
+
+v2 runs one pass, removes duplicate boxes, splits the jaws along a fitted bite line, caps to 32 teeth before
+numbering (never deleting a detected one) and numbers each tooth by its position along the arch, using a
+template learned on the training split. The published engine stays the default until the paper reports v2.
+Finding (caries, restoration) accuracy on OPGs has not been validated.
 
 **Photo screening** (AKU official test split, 628 smartphone photos;
 [`photo_screening/EVAL.md`](photo_screening/EVAL.md)), service defaults: 90.7 % [86.2, 93.8] of photos with
