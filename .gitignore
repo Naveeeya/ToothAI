@@ -100,3 +100,6 @@ paper_eval/review/
 
 # === paper_eval model-output cache (numeric ids only; regenerate with cache_outputs.py) ===
 paper_eval/.cache/
+
+# deploy/push.sh image archives
+.deploy/

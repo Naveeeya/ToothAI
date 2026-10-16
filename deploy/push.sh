@@ -18,16 +18,36 @@ echo "== build toothai-photo-api:$VERSION and toothai-ui:$VERSION (linux/arm64)"
 docker build --platform linux/arm64 -f photo_screening/Dockerfile -t "toothai-photo-api:$VERSION" .
 docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERSION" .
 
+# rsync with --partial and retries: a dropped connection resumes instead of starting over.
+sync() {
+  local i
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    rsync -a --partial --timeout=60 --exclude '._*' -e "ssh -i $KEY -o ServerAliveInterval=15" "$@" && return 0
+    echo "   transfer interrupted, retrying ($i)"; sleep 10
+  done
+  return 1
+}
+
 if [[ "${2:-}" == "--weights" ]]; then
   echo "== sync weights"
-  RSYNC=(rsync -a --progress --exclude '._*' -e "ssh -i $KEY")
-  "${RSYNC[@]}" output/resnet50_9class_20k output/rtx4060_48k "ubuntu@$IP:/opt/toothai/output/" \
-    --include '*/' --include 'config.yaml' --include 'model_final.pth' --exclude '*'
-  "${RSYNC[@]}" photo_screening/weights/ "ubuntu@$IP:/opt/toothai/weights/photo/" --exclude '*.onnx'
+  for run in resnet50_9class_20k rtx4060_48k; do
+    "${SSH[@]}" "mkdir -p /opt/toothai/output/$run"
+    sync "output/$run/config.yaml" "output/$run/model_final.pth" "ubuntu@$IP:/opt/toothai/output/$run/"
+  done
+  sync --exclude '*.onnx' photo_screening/weights/ "ubuntu@$IP:/opt/toothai/weights/photo/"
 fi
 
-echo "== stream images (compressed) and load them on the VM"
-docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" | gzip -1 | "${SSH[@]}" 'gunzip | docker load'
+echo "== save images to a file, upload it (resumable), load it on the VM"
+TMP="${TOOTHAI_DEPLOY_TMP:-.deploy}"
+mkdir -p "$TMP"
+FILE="$TMP/toothai-$VERSION.tar.gz"
+if [[ ! -f "$FILE" ]]; then
+  docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" | gzip -1 > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+fi
+"${SSH[@]}" "mkdir -p /opt/toothai/images"
+sync "$FILE" "ubuntu@$IP:/opt/toothai/images/"
+"${SSH[@]}" "gunzip -c /opt/toothai/images/$(basename "$FILE") | docker load && rm -f /opt/toothai/images/*.tar.gz"
+find "$TMP" -name 'toothai-*.tar.gz' ! -name "$(basename "$FILE")" -delete    # keep only the current one
 
 echo "== start $VERSION at https://$SITE"
 scp -i "$KEY" deploy/compose.yml deploy/Caddyfile "ubuntu@$IP:/opt/toothai/"
