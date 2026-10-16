@@ -37,6 +37,10 @@ browser ──HTTPS──▶ caddy :443 ──▶ ui :8501 (Streamlit, Detectron
 6. **Boot volume**: *Specify a custom boot volume size*, 100 GB.
 7. **Create.** If it says *Out of capacity for shape VM.Standard.A1.Flex*, pick another availability domain
    or retry later (free ARM capacity comes and goes). Don't upgrade to get capacity.
+   To retry automatically instead: configure the OCI CLI (*Profile → My profile → API keys → Add API key*,
+   save the key and config in `~/.oci/`), create the network with the VCN Wizard, then run
+   `TENANCY=<tenancy OCID> SUBNET=<public subnet OCID> deploy/oracle-launch.sh`. It retries every minute,
+   is fixed to 2 OCPU / 12 GB, and stops once any A1 instance exists.
 8. Open ports 80 and 443: on the instance page, **Primary VNIC → Subnet → Security → Default Security List
    → Add Ingress Rules**: source `0.0.0.0/0`, TCP, destination port `80`; repeat for `443`.
 9. Note the **Public IP address** on the instance page.
