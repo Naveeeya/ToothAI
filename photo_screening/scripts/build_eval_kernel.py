@@ -45,8 +45,11 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--alphadent-imgsz", type=int, default=None,
                     help="run AlphaDent at this size (speed study); the kernel gets its own id and output")
+    ap.add_argument("--caries-kernel", default="alphaleporus/tooth-ai-photo-caries-aku",
+                    help="training kernel whose caries_aku_artifacts to evaluate (e.g. the -light variant)")
     args = ap.parse_args()
-    suffix = f"-ad{args.alphadent_imgsz}" if args.alphadent_imgsz else ""
+    suffix = (f"-ad{args.alphadent_imgsz}" if args.alphadent_imgsz else "") + \
+        ("-" + args.caries_kernel.rsplit("-", 1)[-1] if args.caries_kernel.endswith("-light") else "")
     out_dir = OUT.with_name(OUT.name + suffix)
     blob = snapshot()
     cells = [
@@ -66,6 +69,9 @@ for model_id, art in (("caries_aku", "caries_aku_artifacts"), ("teeth_dentalai",
     print(model_id, "->", best)
     (weights / model_id).mkdir(parents=True, exist_ok=True)
     shutil.copy(best, weights / model_id / "best.pt")
+    th = Path(best).with_name("thresholds.json")       # the evaluated model's own calibration, not the snapshot's
+    if th.exists():
+        shutil.copy(th, weights / model_id / "thresholds.json")
 '''.replace("BLOB", repr(blob))),
         cell('''
 import requests
@@ -113,7 +119,7 @@ print(json.dumps(json.load(open(W / "eval_results_aku.json")), indent=1)[:6000])
         "code_file": "eval_aku.ipynb", "language": "python", "kernel_type": "notebook", "is_private": True,
         "enable_gpu": True, "enable_tpu": False, "enable_internet": True, "machine_shape": "NvidiaTeslaT4",
         "dataset_sources": [], "competition_sources": [], "model_sources": [],
-        "kernel_sources": ["alphaleporus/tooth-ai-photo-caries-aku", "alphaleporus/tooth-ai-photo-teeth-dentalai"],
+        "kernel_sources": [args.caries_kernel, "alphaleporus/tooth-ai-photo-teeth-dentalai"],
     }, indent=2))
     print("wrote", out_dir, f"(code snapshot {len(blob) // 1024} KB)")
 
