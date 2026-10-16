@@ -83,14 +83,17 @@ def _load_leakage():
 
 LEAKAGE = _load_leakage()
 
-RUNNABLE = ["single_pass", "full", "full_fix_routing", "no_zone_threshold", "nms"]
+RUNNABLE = ["single_pass", "full", "full_fix_routing", "no_zone_threshold", "nms",
+            "single_pass_fix_routing"]
 
 # full_fix_routing runs the deployed two-pass system with the app.py:953-958
 # class-routing bug CORRECTED. It is a separate row rather than a flag on the
 # whole run so the paper can show the deployed number and the fixed number
 # side by side.
-BASE_CONFIG = {"full_fix_routing": "full"}
-FIXED_ROUTING = {"full_fix_routing"}
+BASE_CONFIG = {"full_fix_routing": "full", "single_pass_fix_routing": "single_pass"}
+FIXED_ROUTING = {"full_fix_routing", "single_pass_fix_routing"}
+# single_pass_fix_routing: one pass (original image only) with the routing fix. The existing
+# single_pass row carries the bug, so it cannot be compared like-for-like with full_fix_routing.
 NOT_RUN = {
     "no_gamma": "not in deployed system (apply_gamma defined at app.py:454, called nowhere)",
     "no_flip": "not in deployed system (flip_instances_horizontal at app.py:475, called nowhere)",

@@ -1,0 +1,54 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 727531295fc8ebb5c0036c69edde6a534a62ef3f+dirty
+# gpu: no-nvidia-smi
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# paired per-image deltas; input results/per_image.csv
+# anchor config: single_pass_fix_routing
+# every interval in this file is paired on image_id: the same
+# image contributes to both sides of every delta.
+configs present: full, full_fix_routing, network_numbering_t005, network_numbering_t020, nms, no_zone_threshold, single_pass, single_pass_fix_routing
+images per config: {'full': 648, 'full_fix_routing': 648, 'network_numbering_t005': 117, 'network_numbering_t020': 117, 'nms': 648, 'no_zone_threshold': 648, 'single_pass': 648, 'single_pass_fix_routing': 648}
+
+====================================================================================================
+PAIRED DELTA   single_pass_fix_routing  MINUS  full_fix_routing
+====================================================================================================
+metric                single_pasfull_fix_r     delta     95% interval on delta      img w/l/t
+----------------------------------------------------------------------------------------------------
+full-arch recall           94.8%     94.3%    +0.44pp  [ +0.07,  +0.81]pp      13/4/76  n=93
+central-zone recall        98.4%     98.3%    +0.13pp  [ +0.00,  +0.33]pp       2/0/91  n=93
+peripheral recall          90.9%     90.1%    +0.76pp  [ +0.07,  +1.46]pp      13/4/76  n=93
+FDI accuracy (joint)       64.5%     61.6%    +2.88pp  [ +0.09,  +5.90]pp     25/14/78  n=117
+detection recall           95.3%     94.9%    +0.39pp  [ +0.09,  +0.72]pp     13/3/101  n=117
+FDI | detected             67.7%     64.9%    +2.76pp  [ -0.08,  +5.83]pp     23/15/79  n=117
+jaw | detected             97.9%     97.9%    +0.04pp  [ -0.27,  +0.33]pp      15/9/93  n=117
+jaw accuracy (93 FA)       87.2%     87.3%    -0.08pp  [ -0.36,  +0.17]pp       9/7/77  n=93
+----------------------------------------------------------------------------------------------------
+  img w/l/t = images where a beat b / b beat a / tied
+
+====================================================================================================
+COMPARISON ACCOUNTING
+====================================================================================================
+  paired intervals computed in this run : 8
+  config pairs                          : 1
+  metrics per pair                      : 8
+
+  These intervals are not independent: the same images and the same
+  detections feed every one of them, and the metrics are correlated
+  (peripheral recall is a component of overall recall). No
+  multiplicity correction is applied and none would be easy to
+  justify here, so an interval that happens to exclude zero should
+  be read as one comparison out of 8, not as a
+  standalone test.
+
+  Report the effect size and its interval. An interval that excludes
+  zero is suggestive at this scale, not established; an interval that
+  includes zero means this sample cannot separate the two, which is
+  not the same as showing they are equal.
+====================================================================================================
