@@ -113,6 +113,20 @@ caries), with the service defaults:
 
 Speed: about 0.2 s per photo for all three models on a T4, about 1 s on an Apple M1 (MPS).
 
+## Experiments not adopted
+
+- **Indoor-light retraining** (`notebooks/train_caries_aku_light.ipynb`): one warm, dimmed copy of every
+  training photo. On a synthetic warm-light copy of the AKU test split the retrained model held AP@50 at
+  0.898 where the current one fell from 0.895 to 0.877. End to end with the grey-world pass, though, it was
+  no better on the real splits (validation referral with caries 91.7 % vs 93.2 %; test 88.9 % vs 90.7 %,
+  false referral 4.5 % vs 5.6 %, all within the CIs), and on one real home photo set it found one more
+  decay area but at lower confidence. Kept the current model; real home photos are needed to decide
+  (`DATA_PROTOCOL.md`).
+- **AlphaDent at 640 px** (2.2x faster): identical referral and false-referral rates on the validation
+  split, but tooth-wear marks rose from 1.02 to 1.42 per photo. Not adopted yet.
+- **ONNX Runtime export**: slower than PyTorch on the CPU (3.9 s vs 1.7 s per image for AlphaDent) and
+  scores shifted by up to ~0.1. Dropped.
+
 ## Limitations
 
 - **What photos can't see:** decay between teeth, below the gum line or inside the tooth, bone loss and
