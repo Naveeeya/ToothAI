@@ -97,3 +97,6 @@ ap_summary.json
 paper_eval/results/label_quality.csv
 paper_eval/results/panel_candidates.csv
 paper_eval/review/
+
+# === paper_eval model-output cache (numeric ids only; regenerate with cache_outputs.py) ===
+paper_eval/.cache/

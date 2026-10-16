@@ -229,6 +229,12 @@ def render():
                                      "and more false ones.")
             find_t = st.slider("Finding score", 0.10, 0.80, DEFAULT_FINDINGS_THRESHOLD, 0.05, key="ta_ft",
                                help="Minimum detection score for a finding.")
+        engine = st.segmented_control(
+            "Numbering", ["v1", "v2"], default="v1", key="ta_engine",
+            format_func=lambda e: {"v1": "Published", "v2": "Improved (beta)"}[e],
+            help="Published is the engine measured in the paper. Improved cleans up before numbering, "
+                 "numbers outward from the midline and never drops a detected tooth (paper_eval/engine_lab.py)."
+        ) or "v1"
         notation = st.segmented_control("Tooth notation", ["FDI", "Universal"], default="FDI",
                                         key="ta_notation") or "FDI"
         st.caption(f"{'Demo mode · cached detections' if demo else MODEL_VERSION}")
@@ -279,11 +285,11 @@ def render():
                    icon=":material/warning:")
 
     # ---------------- analysis (cached per image + settings; display changes never re-run it)
-    key = (source_key, mode, round(teeth_t, 2), round(find_t, 2))
+    key = (source_key, mode, round(teeth_t, 2), round(find_t, 2), engine)
     result = st.session_state.get("ta_results", {}).get(key)
     if result is None:
         if sample and source_key.startswith("sample:"):
-            result = analyze_sample(sample, mode, teeth_t, find_t)
+            result = analyze_sample(sample, mode, teeth_t, find_t, engine=engine)
         else:
             lock = _analysis_lock()
             if not lock.acquire(blocking=False):
@@ -297,7 +303,7 @@ def render():
                 predictors, _ = _predictors(mode)
                 status.write("Enhancing contrast")
                 result = analyze(cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR), mode, predictors,
-                                 teeth_t, find_t, on_step=status.write)
+                                 teeth_t, find_t, on_step=status.write, engine=engine)
                 status.update(label=f"Analysis complete in {result.total_seconds:.1f} s",
                               state="complete", expanded=False)
             except Exception as exc:

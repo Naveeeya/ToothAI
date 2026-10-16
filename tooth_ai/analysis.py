@@ -15,6 +15,7 @@ import numpy as np
 
 from tooth_ai import evidence
 from tooth_ai.evidence import pct
+from tooth_ai import engine_v2
 from tooth_ai.pipeline import (
     PATHOLOGY_CLASS_MAP,
     DentalGeometricEngine,
@@ -22,6 +23,7 @@ from tooth_ai.pipeline import (
     compute_iou,
     process_predictions,
     run_inference,
+    suppress_metal_artifacts,
     validate_anatomy,
 )
 
@@ -49,6 +51,7 @@ MODEL_VERSION = "Mask R-CNN R50 (9-class, 20k) + R50 (41-class findings, 48k)"
 DEFAULT_TEETH_THRESHOLD = 0.20
 DEFAULT_FINDINGS_THRESHOLD = 0.15
 
+ENGINES = ("v1", "v2")   # v1: as published (paper_eval DEPLOYED); v2: tooth_ai/engine_v2.py
 FULL_JAW = 14          # a jaw with fewer detected teeth is treated as a partial arch
 LOW_TOTAL = 10         # fewer teeth than this overall: image-quality alert
 
@@ -119,7 +122,7 @@ def _geometry(teeth_nms, teeth, image_shape):
     return geo
 
 
-def assess_reliability(teeth, mode="Full chart"):
+def assess_reliability(teeth, mode="Full chart", engine="v1"):
     """Numbering reliability for one case.
 
     Geometric numbering walks each jaw from the patient's right third molar, so a missing
@@ -166,10 +169,11 @@ def assess_reliability(teeth, mode="Full chart"):
         reasons.append(f"Spatial consistency {confidence:.0%}")
 
     if not reasons:
+        measured = (f"On complete arches numbering measured {pct(evidence.deployed_summary()['complete'], 0)} "
+                    "FDI accuracy." if engine == "v1" else "See the Performance page for measured accuracy.")
         return Reliability(
             "ok", "Complete arches — numbering reliable",
-            "Both jaws are close to complete, with no gaps or conflicts. On complete arches "
-            f"numbering measured {pct(evidence.deployed_summary()['complete'], 0)} FDI accuracy.",
+            "Both jaws are close to complete, with no gaps or conflicts. " + measured,
             [], confidence)
 
     if partial:
@@ -178,22 +182,32 @@ def assess_reliability(teeth, mode="Full chart"):
         title = "Gap in the arch"
     else:
         title = "Numbering conflict"
+    how = ("Numbers are assigned in order along each jaw, so one missing tooth can shift every number after it."
+           if engine == "v1" else
+           "Numbers are counted outward from the midline, so a missing tooth can shift the numbers beyond it "
+           "on that side.")
     return Reliability(
         "caution", f"{title} — numbers may be shifted",
-        "Numbers are assigned in order along each jaw, so one missing tooth can shift every "
-        "number after it. Review the highlighted jaw before relying on the chart.",
+        how + " Review the highlighted jaw before relying on the chart.",
         reasons, confidence)
 
 
 def chart_from_detections(raw_teeth, raw_anomalies, image_shape, mode="Full chart",
                           findings_threshold=DEFAULT_FINDINGS_THRESHOLD, timings=None,
-                          source="model"):
-    """Geometric half of the pipeline: NMS -> jaws -> FDI -> mapping -> validation."""
+                          source="model", engine="v1"):
+    """Geometric half of the pipeline: NMS -> jaws -> FDI -> mapping -> validation.
+
+    engine "v1" is the published pipeline; "v2" (tooth_ai.engine_v2) cleans up before numbering, numbers
+    from the dental midline and never deletes a detected tooth.
+    """
     timings = dict(timings or {})
     t0 = time.perf_counter()
     if MODES[mode]["key"] == "findings":
         raw_anomalies = [a for a in raw_anomalies if a["class_name"] != "Tooth"]
         teeth_nms, all_teeth = [], []
+    elif engine == "v2":
+        teeth_nms = DentalGeometricEngine.apply_nms(raw_teeth, iou_threshold=0.4)
+        all_teeth = engine_v2.number_teeth(teeth_nms, **engine_v2.DEFAULTS)
     else:
         teeth_nms = DentalGeometricEngine.apply_nms(raw_teeth, iou_threshold=0.4)
         upper_jaw, lower_jaw = DentalGeometricEngine.split_jaws(teeth_nms)
@@ -207,8 +221,14 @@ def chart_from_detections(raw_teeth, raw_anomalies, image_shape, mode="Full char
     # identifies the pair exactly even after renumbering.
     owner = {id(f["box"]): t for t in all_teeth for f in t["findings"]}
     all_teeth = clean_clinical_findings(all_teeth)
-    all_teeth, raw_anomalies = validate_anatomy(all_teeth, raw_anomalies,
-                                                anomaly_threshold=findings_threshold)
+    if engine == "v2":   # v2 has already capped and de-conflicted; only the finding checks remain
+        all_teeth, raw_anomalies = suppress_metal_artifacts(all_teeth, raw_anomalies)
+        for t in all_teeth:
+            t["findings"] = [f for f in t["findings"] if f["score"] >= findings_threshold]
+        raw_anomalies = [a for a in raw_anomalies if a["score"] >= findings_threshold]
+    else:
+        all_teeth, raw_anomalies = validate_anatomy(all_teeth, raw_anomalies,
+                                                    anomaly_threshold=findings_threshold)
     timings["Anatomical validation"] = time.perf_counter() - t0
 
     # validate_anatomy can drop teeth after mapping; their findings become unassigned.
@@ -222,11 +242,11 @@ def chart_from_detections(raw_teeth, raw_anomalies, image_shape, mode="Full char
     return AnalysisResult(
         mode=mode, teeth=all_teeth, findings=raw_anomalies, unassigned=unassigned,
         geometry=_geometry(teeth_nms, all_teeth, image_shape),
-        reliability=assess_reliability(all_teeth, mode), timings=timings, source=source)
+        reliability=assess_reliability(all_teeth, mode, engine), timings=timings, source=source)
 
 
 def analyze(image_bgr, mode, predictors, teeth_threshold=DEFAULT_TEETH_THRESHOLD,
-            findings_threshold=DEFAULT_FINDINGS_THRESHOLD, on_step=None):
+            findings_threshold=DEFAULT_FINDINGS_THRESHOLD, on_step=None, engine="v1"):
     """Full pipeline on one BGR image.
 
     predictors: {"primary": DefaultPredictor, "pathology": DefaultPredictor or None}.
@@ -239,10 +259,19 @@ def analyze(image_bgr, mode, predictors, teeth_threshold=DEFAULT_TEETH_THRESHOLD
 
     step("Detecting teeth" if cfg["key"] == "full" else "Detecting findings")
     t0 = time.perf_counter()
-    outputs = run_inference(predictors["primary"], image_bgr)
+    if engine == "v2":
+        # v2: one pass (the CLAHE pass and its consensus penalty cost teeth: paper_eval single_pass) and one
+        # tooth threshold everywhere (the central zone is the easy zone: paper_eval AUDIT 5.8).
+        primary = predictors["primary"]
+        primary.cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
+        outputs = primary(image_bgr)
+    else:
+        outputs = run_inference(predictors["primary"], image_bgr)
     raw_teeth, raw_anomalies = process_predictions(
         outputs, image_width=width, teeth_threshold=teeth_threshold,
         anomaly_threshold=findings_threshold, class_map=cfg["class_map"])
+    if engine == "v2":
+        raw_teeth = [t for t in raw_teeth if t["score"] >= teeth_threshold]
     timings["Detection"] = time.perf_counter() - t0
 
     if cfg["key"] == "full" and predictors.get("pathology") is not None:
@@ -268,4 +297,4 @@ def analyze(image_bgr, mode, predictors, teeth_threshold=DEFAULT_TEETH_THRESHOLD
 
     step("Numbering and validating")
     return chart_from_detections(raw_teeth, raw_anomalies, image_bgr.shape, mode,
-                                 findings_threshold, timings)
+                                 findings_threshold, timings, engine=engine)

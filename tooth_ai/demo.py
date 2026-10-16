@@ -115,7 +115,7 @@ def _load_outputs(name):
 
 
 def analyze_sample(name, mode="Full chart", teeth_threshold=DEFAULT_TEETH_THRESHOLD,
-                   findings_threshold=DEFAULT_FINDINGS_THRESHOLD):
+                   findings_threshold=DEFAULT_FINDINGS_THRESHOLD, engine="v1"):
     """Same geometric pipeline as tooth_ai.analysis.analyze, on cached detections."""
     outputs, (h, w) = _load_outputs(name)
     raw_teeth, raw_anomalies = process_predictions(
@@ -125,4 +125,4 @@ def analyze_sample(name, mode="Full chart", teeth_threshold=DEFAULT_TEETH_THRESH
         raw_teeth = []
     return chart_from_detections(raw_teeth, raw_anomalies, (h, w, 3), mode,
                                  findings_threshold, timings={"Detection (cached)": 0.0},
-                                 source="demo")
+                                 source="demo", engine=engine)

@@ -27,7 +27,7 @@ sudo netfilter-persistent save
 
 echo "== SSH: keys only"
 sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sudo systemctl reload ssh || sudo systemctl reload sshd
+sudo systemctl reload ssh 2>/dev/null || sudo systemctl restart ssh.socket 2>/dev/null || true   # 24.04: socket-activated
 
 echo "== Docker"
 sudo systemctl enable --now docker

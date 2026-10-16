@@ -40,7 +40,11 @@ while true; do
   if grep -qiE "TooManyRequests|429" <<<"$out"; then
     echo "$(date '+%F %T') rate limited; waiting 5 min"; sleep 300; continue
   fi
-  echo "$(date '+%F %T') unexpected error, stopping:"; echo "$out" | grep -v SyntaxWarning | tail -5; exit 1
+  # Client-side network trouble (DNS, dropped connection, timeout): not Oracle's answer, so retry.
+  if grep -qiE "ConnectionError|Max retries|NameResolution|timed out|RequestException|\"target_service\": \"CLI\"" <<<"$out"; then
+    echo "$(date '+%F %T') network error on this machine; retrying in 2 min"; sleep 120; continue
+  fi
+  echo "$(date '+%F %T') unexpected error, stopping:"; echo "$out" | grep -v SyntaxWarning | head -12; exit 1
 done
 
 $OCI compute instance get --instance-id "$ID" --wait-for-state RUNNING --max-wait-seconds 900 >/dev/null 2>&1
