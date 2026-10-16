@@ -5,7 +5,9 @@
 set -euo pipefail
 IP="${1:?usage: deploy/push.sh <vm-ip> [--weights]}"
 KEY="${TOOTHAI_SSH_KEY:-$HOME/.ssh/toothai_oracle}"
-SSH=(ssh -i "$KEY" -o StrictHostKeyChecking=accept-new "ubuntu@$IP")
+# IPQoS=none: macOS ssh otherwise marks packets in a way some home routers choke on ("Result too large").
+SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o IPQoS=none -o ServerAliveInterval=15)
+SSH=(ssh "${SSH_OPTS[@]}" "ubuntu@$IP")
 VERSION="$(git rev-parse --short HEAD)"
 SITE="${SITE_ADDRESS:-${IP//./-}.sslip.io}"
 cd "$(git rev-parse --show-toplevel)"
@@ -22,7 +24,7 @@ docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERS
 sync() {
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    rsync -a --partial --timeout=60 --exclude '._*' -e "ssh -i $KEY -o ServerAliveInterval=15" "$@" && return 0
+    rsync -a --partial --timeout=120 --exclude '._*' -e "ssh ${SSH_OPTS[*]}" "$@" && return 0
     echo "   transfer interrupted, retrying ($i)"; sleep 10
   done
   return 1
@@ -37,20 +39,19 @@ if [[ "${2:-}" == "--weights" ]]; then
   sync --exclude '*.onnx' photo_screening/weights/ "ubuntu@$IP:/opt/toothai/weights/photo/"
 fi
 
-echo "== save images to a file, upload it (resumable), load it on the VM"
+echo "== save images to a tar, send only what changed (rsync delta, compressed), load it on the VM"
+# Uncompressed, under a fixed name: unchanged image layers are byte-identical between builds, so rsync's
+# delta transfer sends little more than the changed code after the first deploy.
 TMP="${TOOTHAI_DEPLOY_TMP:-.deploy}"
 mkdir -p "$TMP"
-FILE="$TMP/toothai-$VERSION.tar.gz"
-if [[ ! -f "$FILE" ]]; then
-  docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" | gzip -1 > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
-fi
-"${SSH[@]}" "mkdir -p /opt/toothai/images"
-sync "$FILE" "ubuntu@$IP:/opt/toothai/images/"
-"${SSH[@]}" "gunzip -c /opt/toothai/images/$(basename "$FILE") | docker load && rm -f /opt/toothai/images/*.tar.gz"
-find "$TMP" -name 'toothai-*.tar.gz' ! -name "$(basename "$FILE")" -delete    # keep only the current one
-
+TAR="$TMP/toothai-images.tar"
+docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" -o "$TAR.tmp" && mv "$TAR.tmp" "$TAR"
+rm -f "$TMP"/toothai-*.tar.gz
+"${SSH[@]}" "mkdir -p /opt/toothai/images && rm -f /opt/toothai/images/*.tar.gz"
+sync -z "$TAR" "ubuntu@$IP:/opt/toothai/images/"
+"${SSH[@]}" "docker load -i /opt/toothai/images/toothai-images.tar"
 echo "== start $VERSION at https://$SITE"
-scp -i "$KEY" deploy/compose.yml deploy/Caddyfile "ubuntu@$IP:/opt/toothai/"
+scp "${SSH_OPTS[@]}" deploy/compose.yml deploy/Caddyfile "ubuntu@$IP:/opt/toothai/"
 "${SSH[@]}" "cd /opt/toothai && printf 'TOOTHAI_VERSION=%s\nSITE_ADDRESS=%s\n' '$VERSION' '$SITE' > .env \
   && docker compose -f compose.yml up -d --remove-orphans && docker image prune -af >/dev/null && docker compose ps"
 echo "live: https://$SITE"
