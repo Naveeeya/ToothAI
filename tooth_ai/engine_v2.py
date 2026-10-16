@@ -12,12 +12,17 @@ measured by ``paper_eval/engine_lab.py`` on the validation split (design) and th
    (see ``find_midline``) and numbers outward on both sides.
 3. Duplicates: a detection whose mask lies mostly inside a stronger one is dropped (box NMS misses them).
 4. Jaws split along a fitted bite line instead of at the median height, which forced equal halves.
-5. A consistent gap rule: v1 compared the centre distance with the current tooth's width only and counted
-   ``int(gap / width) - 1`` missing teeth, which is 0 for gaps of 1.6-2.0 widths although the rule fired.
-   v2 uses the mean width of the two neighbours and rounds.
+5. Numbering by position, not by count: each tooth's distance from the midline (in tooth widths) is aligned,
+   in order, to a template learned on the TRAIN split (``arch_template.json``), so a missing or undetected
+   tooth leaves its position empty instead of shifting the rest. (The count-based alternative, ``numbering=
+   "gap"``, keeps v1's gap rule made consistent: mean neighbour width, rounded.)
 """
 
 from __future__ import annotations
+
+import json
+from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 
@@ -25,9 +30,10 @@ from tooth_ai.pipeline import DentalGeometricEngine
 
 MAX_TEETH, MAX_PER_JAW = 32, 16
 # The configuration the app uses for engine "v2", chosen on the validation split only (paper_eval/engine_lab.py,
-# variant "v2-1p-dc"): on 152 validation images FDI 61.2 % vs 47.5 % for v1, recall 94.2 % vs 93.0 %.
+# variant "v2"); measured numbers are in paper_eval/results/engine_v2*.csv.
 # The detector side of v2 (in tooth_ai.analysis): one pass, no CLAHE fusion, one tooth threshold everywhere.
-DEFAULTS = {"midline": "symmetry", "jaw_split": "curve", "dedupe": True, "shared_midline": False}
+DEFAULTS = {"midline": "symmetry", "jaw_split": "curve", "dedupe": True, "shared_midline": False,
+            "numbering": "template"}
 GAP_RATIO = 1.6
 SIDE_FDI = {("upper", "right"): [11, 12, 13, 14, 15, 16, 17, 18], ("upper", "left"): [21, 22, 23, 24, 25, 26, 27, 28],
             ("lower", "right"): [41, 42, 43, 44, 45, 46, 47, 48], ("lower", "left"): [31, 32, 33, 34, 35, 36, 37, 38]}
@@ -151,6 +157,103 @@ def number_jaw(jaw, jaw_type, mid_x):
     return out
 
 
+@lru_cache(maxsize=1)
+def arch_template():
+    """Median distance of each position from the midline, in tooth widths, learned on the TRAIN split
+    (paper_eval/learn_template.py -> tooth_ai/arch_template.json)."""
+    d = json.loads((Path(__file__).with_name("arch_template.json")).read_text())
+    return {jaw: (np.array([d["median_distance_from_midline"][jaw][str(p)] for p in range(1, 9)]),
+                  np.array([d["std"][jaw][str(p)] for p in range(1, 9)])) for jaw in ("upper", "lower")}
+
+
+def _align(dists, mean, std):
+    """Assign strictly increasing positions (0-7) to teeth ordered outward, minimising the spread-weighted
+    squared distance to the template. Positions may be skipped (missing teeth). Returns (cost, positions)."""
+    n, m = len(dists), len(mean)
+    if n > m:
+        return None
+    inf = float("inf")
+    cost = [[inf] * m for _ in range(n)]
+    back = [[-1] * m for _ in range(n)]
+    for j in range(m):
+        cost[0][j] = ((dists[0] - mean[j]) / std[j]) ** 2
+    for i in range(1, n):
+        best, arg = inf, -1
+        for j in range(m):
+            if j >= 1 and cost[i - 1][j - 1] < best:
+                best, arg = cost[i - 1][j - 1], j - 1
+            if best < inf:
+                cost[i][j] = best + ((dists[i] - mean[j]) / std[j]) ** 2
+                back[i][j] = arg
+    j = int(np.argmin(cost[n - 1]))
+    total = cost[n - 1][j]
+    pos = [j]
+    for i in range(n - 1, 0, -1):
+        j = back[i][j]
+        pos.append(j)
+    return total, pos[::-1]
+
+
+def template_cost(jaw, jaw_type, mid_x):
+    """Total alignment cost of both sides for a candidate midline (lower = better fit)."""
+    mean, std = arch_template()[jaw_type]
+    unit = float(np.median([_w(t) for t in jaw])) if jaw else 1.0
+    total = 0.0
+    for side in ("right", "left"):
+        teeth = sorted([t for t in jaw if (_cx(t) < mid_x) == (side == "right")], key=lambda t: abs(_cx(t) - mid_x))
+        if len(teeth) > 8:
+            return float("inf")
+        if not teeth:
+            continue
+        d = [abs(_cx(t) - mid_x) / max(unit, 1e-6) for t in teeth]
+        total += min(r[0] for r in (_align([x * s for x in d], mean, std) for s in np.linspace(0.8, 1.2, 9)) if r)
+    return total
+
+
+def fit_midline(jaw, jaw_type):
+    """Midline = the gap between neighbouring teeth whose two sides best fit the learned arch template."""
+    teeth = sorted(jaw, key=_cx)
+    if len(teeth) < 4:
+        return find_midline(jaw, "median")
+    cands = [(_cx(a) + _cx(b)) / 2 for a, b in zip(teeth, teeth[1:])]
+    return min(cands, key=lambda x: template_cost(jaw, jaw_type, x))
+
+
+def number_jaw_template(jaw, jaw_type, mid_x):
+    """Number by where each tooth sits: distance from the midline in tooth widths, aligned in order to the
+    learned template. A missing tooth anywhere leaves its position empty instead of shifting the rest."""
+    mean, std = arch_template()[jaw_type]
+    unit = float(np.median([_w(t) for t in jaw])) if jaw else 1.0
+    out = []
+    for side in ("right", "left"):
+        seq = SIDE_FDI[(jaw_type, side)]
+        teeth = sorted([t for t in jaw if (_cx(t) < mid_x) == (side == "right")], key=lambda t: abs(_cx(t) - mid_x))
+        if not teeth:
+            continue
+        teeth, extra = teeth[:8], teeth[8:]      # more than 8 on one side: the distal extras overflow (flagged)
+        d = [abs(_cx(t) - mid_x) / max(unit, 1e-6) for t in teeth]
+        best = None
+        for s in np.linspace(0.8, 1.2, 9):                       # per-side scale (magnification, crowding)
+            r = _align([x * s for x in d], mean, std)
+            if r and (best is None or r[0] < best[0]):
+                best = (r[0], r[1], s)
+        for i, (t, p) in enumerate(zip(teeth, best[1])):
+            fdi = seq[p]
+            out.append({"box": t["box"], "fdi": fdi, "score": t["score"], "quadrant": fdi // 10,
+                        "mask": t.get("mask"), "findings": [],
+                        "trace": {"jaw": jaw_type, "rank": i + 1, "jaw_count": len(jaw), "gap_ratio": None,
+                                  "skipped": p - (best[1][i - 1] if i else -1) - 1, "overflow": False,
+                                  "reassigned_from": None, "engine": "v2", "side": side,
+                                  "template_distance": round(d[i] * best[2], 2)}})
+        for t in extra:
+            out.append({"box": t["box"], "fdi": seq[-1], "score": t["score"], "quadrant": seq[-1] // 10,
+                        "mask": t.get("mask"), "findings": [],
+                        "trace": {"jaw": jaw_type, "rank": None, "jaw_count": len(jaw), "gap_ratio": None,
+                                  "skipped": 0, "overflow": True, "reassigned_from": None, "engine": "v2",
+                                  "side": side}})
+    return out
+
+
 def resolve_conflicts(teeth):
     """Duplicate numbers: the higher score keeps it; the other moves to the nearest free number in its
     quadrant, or keeps its number flagged as a conflict. A detected tooth is never deleted."""
@@ -171,7 +274,8 @@ def resolve_conflicts(teeth):
     return teeth
 
 
-def number_teeth(teeth_nms, midline="symmetry", jaw_split="median", dedupe=False, shared_midline=False):
+def number_teeth(teeth_nms, midline="symmetry", jaw_split="median", dedupe=False, shared_midline=False,
+                 numbering="gap"):
     """v2 replacement for split_jaws + sort_and_assign_fdi + recursive_prune + resolve_fdi_conflicts."""
     if dedupe:
         teeth_nms = suppress_contained(teeth_nms)
@@ -180,7 +284,11 @@ def number_teeth(teeth_nms, midline="symmetry", jaw_split="median", dedupe=False
         teeth = (DentalGeometricEngine.sort_and_assign_fdi(upper, "upper")
                  + DentalGeometricEngine.sort_and_assign_fdi(lower, "lower"))
     else:
-        mids = {name: find_midline(jaw, midline, return_cost=True) for jaw, name in ((upper, "upper"), (lower, "lower"))}
+        if midline == "fit":
+            mids = {name: (fit_midline(jaw, name) if jaw else None, None) for jaw, name in ((upper, "upper"), (lower, "lower"))}
+        else:
+            mids = {name: find_midline(jaw, midline, return_cost=True)
+                    for jaw, name in ((upper, "upper"), (lower, "lower"))}
         if shared_midline and all(m[0] is not None for m in mids.values()):
             # The two midlines are almost aligned on an OPG. If they disagree by more than half a tooth, both
             # jaws use the one found with the lower mirror cost (the more symmetric, usually fuller, jaw).
@@ -190,7 +298,8 @@ def number_teeth(teeth_nms, midline="symmetry", jaw_split="median", dedupe=False
                 x = xu if cu <= cl else xl
                 mids = {"upper": (x, cu), "lower": (x, cl)}
         teeth = []
+        place = number_jaw_template if numbering == "template" else number_jaw
         for jaw, name in ((upper, "upper"), (lower, "lower")):
             if jaw:
-                teeth += number_jaw(jaw, name, mids[name][0])
+                teeth += place(jaw, name, mids[name][0])
     return resolve_conflicts(teeth)

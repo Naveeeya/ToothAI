@@ -68,3 +68,36 @@ def test_options_run():
     teeth = arch(missing=(0, 16))
     for opts in ({"midline": "median"}, {"jaw_split": "curve"}, {"shared_midline": True}, {"dedupe": True}):
         assert len(v2(teeth, **opts)) == 30
+
+
+def realistic_arch(missing=(), unit=40.0, w=1000):
+    """Teeth placed where the learned template puts them (incisors narrow, molars wide), as on a real OPG."""
+    teeth = []
+    for jaw, (y1, y2) in (("upper", (150, 240)), ("lower", (260, 350))):
+        mean, _ = V2.arch_template()[jaw]
+        for side, sign, seq in (("right", -1, V2.SIDE_FDI[(jaw, "right")]), ("left", 1, V2.SIDE_FDI[(jaw, "left")])):
+            for pos, fdi in enumerate(seq):
+                if fdi in missing:
+                    continue
+                cx = w / 2 + sign * mean[pos] * unit
+                half = unit * (0.4 if pos < 3 else 0.5)
+                dy = 0.0003 * (cx - w / 2) ** 2 * (-1 if jaw == "upper" else 1)
+                teeth.append({"box": [cx - half, y1 + dy, cx + half, y2 + dy], "score": 0.9, "mask": None,
+                              "class_name": "Tooth", "class_id": 0, "true": fdi})
+    return teeth
+
+
+def test_shipped_defaults_number_realistic_arches():
+    """The configuration the app ships (template numbering, curved jaw split, dedupe)."""
+    for missing in ((), (18, 48), (16,), (38, 28, 36)):
+        teeth = realistic_arch(missing)
+        out = v2(teeth, **V2.DEFAULTS)
+        truth = {tuple(t["box"]): t["true"] for t in teeth}
+        got = {tuple(t["box"]): t["fdi"] for t in out}
+        assert got == truth, missing
+
+
+def test_template_is_learned_and_monotonic():
+    for jaw in ("upper", "lower"):
+        mean, std = V2.arch_template()[jaw]
+        assert len(mean) == 8 and all(b > a for a, b in zip(mean, mean[1:])) and (std > 0).all()

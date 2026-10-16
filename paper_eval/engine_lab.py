@@ -134,8 +134,11 @@ VARIANTS = {
     "v2-1p-dc": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
     "v2-1p-all": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "shared_midline": True}),
     "v2-1pz-dc": ("1pass", True, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
+    "v2-tpl": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "numbering": "template"}),
+    "v2-tpl-fit": ("1pass", False, "v2", "fit", {"dedupe": True, "jaw_split": "curve", "numbering": "template"}),
     # the configuration the app ships as engine "v2" (tooth_ai.engine_v2.DEFAULTS, one pass, uniform threshold)
-    "v2": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
+    "v2": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "numbering": "template"}),
+    "v2-gap": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
 }
 
 
