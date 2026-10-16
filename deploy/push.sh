@@ -12,6 +12,17 @@ VERSION="$(git rev-parse --short HEAD)"
 SITE="${SITE_ADDRESS:-${IP//./-}.sslip.io}"
 cd "$(git rev-parse --show-toplevel)"
 
+# A deploy uploads ~1 GB the first time. On a metered network (phone hotspot, cellular: macOS marks it
+# "expensive") that can cost money, so refuse unless explicitly allowed.
+if [[ "$(uname)" == "Darwin" ]] && [[ -z "${TOOTHAI_ALLOW_METERED:-}" ]]; then
+  iface="$(route -n get "$IP" 2>/dev/null | awk '/interface/{print $2}')"
+  if [[ -n "$iface" ]] && ipconfig getsummary "$iface" 2>/dev/null | grep -q "IsExpensive : TRUE"; then
+    echo "This Mac is on a metered network ($iface is marked expensive, e.g. a phone hotspot)." >&2
+    echo "Switch to Wi-Fi/broadband, or set TOOTHAI_ALLOW_METERED=1 to upload anyway." >&2
+    exit 1
+  fi
+fi
+
 if [[ -n "$(git status --porcelain -- app.py tooth_ai photo_screening docker deploy .streamlit static assets)" ]]; then
   echo "Uncommitted changes in the app: commit first so the image version matches git." >&2; exit 1
 fi

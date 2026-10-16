@@ -72,7 +72,10 @@ deploy/push.sh <public-ip> --weights     # first time: also copies the model wei
 deploy/push.sh <public-ip>               # every update after that
 ```
 
-It refuses to run with uncommitted app changes, so the deployed version always matches a git commit. The
+It refuses to run with uncommitted app changes, so the deployed version always matches a git commit, and
+on a metered network (a phone hotspot or cellular link, which macOS marks "expensive"), because the first
+deploy uploads about 1 GB of images (later deploys send only what changed). Set `TOOTHAI_ALLOW_METERED=1` to
+override. The
 site comes up at `https://<ip-with-dashes>.sslip.io` (free DNS for the IP; Caddy gets the certificate).
 To use your own domain, point it at the IP and run `SITE_ADDRESS=your.domain deploy/push.sh <ip>`.
 

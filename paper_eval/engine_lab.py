@@ -69,7 +69,8 @@ def fuse(passes, iou_thr=0.55, penalty=0.6):
     return out
 
 
-def threshold(dets, w, tau=TAU, zone=True):
+def threshold(dets, w, tau=None, zone=True):
+    tau = TAU if tau is None else tau
     keep = []
     for d in dets:
         cx = (d["box"][0] + d["box"][2]) / 2
@@ -237,7 +238,11 @@ def main():
     ap.add_argument("--out", help="CSV under paper_eval/results (test split only)")
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--gap-ratio", type=float, default=None, help="override engine_v2.GAP_RATIO (sweeps)")
+    ap.add_argument("--tau", type=float, default=None, help="override the tooth threshold (sweeps)")
     args = ap.parse_args()
+    if args.tau:
+        global TAU
+        TAU = args.tau
     if args.gap_ratio:
         V2.GAP_RATIO = args.gap_ratio
     names = args.variants.split(",")
