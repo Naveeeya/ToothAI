@@ -29,14 +29,14 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==${TORCH
     && grep -v -E "^(cairosvg|pytest)" /tmp/requirements-app.txt > /tmp/req.txt && pip install -r /tmp/req.txt \
     && rm -rf /wheels /tmp/req*.txt
 
-# Only what the app reads. paper_eval: the three result files evidence.py parses, nothing else.
+# Only what the app reads. paper_eval: the four result files evidence.py parses, nothing else.
 COPY app.py ./
 COPY .streamlit/ .streamlit/
 COPY tooth_ai/ tooth_ai/
 COPY assets/ assets/
 COPY static/ static/
 COPY paper_eval/results/coco_eval_716.csv paper_eval/results/decomposition.csv \
-     paper_eval/results/paired_deltas.txt paper_eval/results/
+     paper_eval/results/paired_deltas.txt paper_eval/results/engine_v2.csv paper_eval/results/
 COPY photo_screening/__init__.py photo_screening/palette.py photo_screening/
 COPY photo_screening/ui/ photo_screening/ui/
 COPY photo_screening/samples/ photo_screening/samples/

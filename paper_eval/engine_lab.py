@@ -133,6 +133,8 @@ VARIANTS = {
     "v2-1p-dc": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
     "v2-1p-all": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "shared_midline": True}),
     "v2-1pz-dc": ("1pass", True, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
+    # the configuration the app ships as engine "v2" (tooth_ai.engine_v2.DEFAULTS, one pass, uniform threshold)
+    "v2": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
 }
 
 
@@ -182,6 +184,22 @@ def run(split, names, cache_dir):
     return per
 
 
+def paired_delta(a, b, n=10000):
+    """Paired bootstrap of ratio(b) - ratio(a) over images (both lists aligned by image)."""
+    import random
+    rng = random.Random(K.SEED)
+    point = sum(x for x, _ in b) / sum(y for _, y in b) - sum(x for x, _ in a) / sum(y for _, y in a)
+    k, stats = len(a), []
+    for _ in range(n):
+        idx = [rng.randrange(k) for _ in range(k)]
+        na = sum(a[i][0] for i in idx); da = sum(a[i][1] for i in idx)
+        nb = sum(b[i][0] for i in idx); db = sum(b[i][1] for i in idx)
+        if da and db:
+            stats.append(nb / db - na / da)
+    stats.sort()
+    return point, stats[int(0.025 * len(stats))], stats[int(0.975 * len(stats))]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=["valid", "test"], required=True)
@@ -206,13 +224,23 @@ def main():
               f"FDI {100 * r['fdi']:.1f} [{100 * r['fdi_lo']:.1f}, {100 * r['fdi_hi']:.1f}]  "
               f"complete {100 * r['complete']:.1f}  partial {100 * r['partial']:.1f}  FP/img {r['fp_per_image']:.2f}",
               flush=True)
+    if len(names) == 2:
+        a, b = names
+        for key in ("recall", "fdi", "complete", "partial"):
+            d, lo, hi = paired_delta(per[a][key], per[b][key], n=args.boot)
+            line = f"paired {b} - {a} {key}: {100 * d:+.2f} pp [{100 * lo:+.2f}, {100 * hi:+.2f}] (n images {len(per[a][key])})"
+            print(line)
+            rows[1]["delta_" + key] = d; rows[1]["delta_" + key + "_lo"] = lo; rows[1]["delta_" + key + "_hi"] = hi
+        rows[0].update({k: "" for k in rows[1] if k.startswith("delta_")})
     if args.out:
         path = args.out if os.path.isabs(args.out) else os.path.join(HERE, args.out)
         with open(path, "w", newline="") as fh:
             for line in K.provenance_header([f"engine_lab.py on cached outputs ({args.split} split)",
                                              f"bootstrap resamples: {args.boot}"]):
+                if args.split == "valid" and line.startswith("# split:"):
+                    line = "# split: data/final-di-stratified/valid  (images with >= 14 labelled teeth)"
                 fh.write(line + "\n")
-            w = csv.DictWriter(fh, fieldnames=list(rows[0]))
+            w = csv.DictWriter(fh, fieldnames=list(rows[-1]))
             w.writeheader(); w.writerows(rows)
         print("wrote", path)
 

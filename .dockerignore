@@ -11,6 +11,7 @@
 !paper_eval/results/coco_eval_716.csv
 !paper_eval/results/decomposition.csv
 !paper_eval/results/paired_deltas.txt
+!paper_eval/results/engine_v2.csv
 
 photo_screening/weights/
 photo_screening/.smoke/

@@ -1,0 +1,16 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: 9a84000b609165b2cbbdcff1f271925aecdf2f83+dirty
+# gpu: no-nvidia-smi
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# engine_lab.py on cached outputs (test split)
+# bootstrap resamples: 10000
+config,split,recall,recall_lo,recall_hi,recall_n_images,fdi,fdi_lo,fdi_hi,fdi_n_images,complete,complete_lo,complete_hi,complete_n_images,partial,partial_lo,partial_hi,partial_n_images,fp_per_image,delta_recall,delta_recall_lo,delta_recall_hi,delta_fdi,delta_fdi_lo,delta_fdi_hi,delta_complete,delta_complete_lo,delta_complete_hi,delta_partial,delta_partial_lo,delta_partial_hi
+v1,test,0.9432123655913979,0.9331317204301075,0.9529569892473119,93,0.6163204747774481,0.5582712369597616,0.6722543352601156,117,0.7663246268656716,0.7084888059701493,0.8218283582089553,67,0.3539967373572594,0.2787682333873582,0.4278688524590164,50,1.3118279569892473,,,,,,,,,,,,
+v2,test,0.9549731182795699,0.9452284946236559,0.9640456989247311,93,0.8353115727002968,0.802534630120837,0.8661417322834646,117,0.9043843283582089,0.871268656716418,0.933768656716418,67,0.7145187601957586,0.6546521374685667,0.7689969604863222,50,1.3118279569892473,0.011760752688172005,0.006720430107526876,0.017137096774193505,0.21899109792284865,0.16636253041362536,0.27388167388167395,0.13805970149253732,0.07509328358208955,0.20195895522388063,0.36052202283849916,0.27928692699490665,0.4426877470355731

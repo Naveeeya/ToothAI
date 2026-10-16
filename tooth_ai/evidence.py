@@ -103,3 +103,9 @@ def deployed_summary():
     full, _, n_full = metric(DEPLOYED, SUBSET_COMPLETE, "fdi_acc_joint")
     part, _, n_part = metric(DEPLOYED, SUBSET_PARTIAL, "fdi_acc_joint")
     return dict(recall=rec, jaw=jaw, complete=full, partial=part, n_complete=n_full, n_partial=n_part)
+
+
+@lru_cache(maxsize=1)
+def engine_v2():
+    """Engine v1 vs v2 on the test split (paper_eval/engine_lab.py -> results/engine_v2.csv), or {} if absent."""
+    return {r["config"]: {k: _num(v) for k, v in r.items()} for r in _read("engine_v2.csv")}

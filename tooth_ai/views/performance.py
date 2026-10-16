@@ -98,6 +98,22 @@ def render():
                    f"itself: **{d:+.1f} pp** (paired 95% CI {lo:+.1f} to {hi:+.1f}, n = {n_pair}). Most of "
                    "the gap comes from detection: the generic tooth detector finds more teeth.")
 
+    v2 = ev.engine_v2()
+    if "v1" in v2 and "v2" in v2:
+        st.subheader("Improved numbering engine (beta)")
+        a, b = v2["v1"], v2["v2"]
+        rows = []
+        for key, label in (("recall", "Tooth detection recall (full arches)"), ("fdi", "FDI accuracy, all canonical"),
+                           ("complete", "FDI accuracy, complete arches"), ("partial", "FDI accuracy, partial arches")):
+            rows.append({"Measure": label,
+                         "Published engine": f"{pct(a[key])} [{pct(a[key + '_lo'])}, {pct(a[key + '_hi'])}]",
+                         "Improved (beta)": f"{pct(b[key])} [{pct(b[key + '_lo'])}, {pct(b[key + '_hi'])}]"})
+        st.dataframe(pd.DataFrame(rows), hide_index=True)
+        st.caption("Same test images and matching as above; the improved engine was designed on the validation "
+                   "split only. It runs one pass, removes duplicate boxes, splits the jaws along a fitted bite "
+                   "line, numbers outward from the midline and never drops a detected tooth. Choose it under "
+                   "Numbering on the Analyse page. Source: `paper_eval/results/engine_v2.csv`.")
+
     st.subheader("Detection and segmentation")
     st.dataframe(pd.DataFrame([
         {"Measure": "AP, generic tooth class (segmentation)", "Value": f"{ap['generic_AP_Tooth']:.1f}"},
