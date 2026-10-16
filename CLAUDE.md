@@ -39,6 +39,8 @@ prosthetic), a dental chart and a PDF report.
 | `paper_eval/` | evaluation harness and audit; source of every number we show |
 | `workspace/` | older phase work and a legacy proof-of-concept UI; not on the deployed path |
 | `output/<run>/` | Detectron2 configs + `model_final.pth` (weights are git-ignored) |
+| `photo_screening/` | smartphone photo screening: FastAPI service, rules, PDF, UI page, notebooks, eval |
+| `docker/`, `deploy/` | app image (Detectron2), production compose + Caddy, Oracle VM setup and push scripts |
 
 ## Deployed pipeline
 

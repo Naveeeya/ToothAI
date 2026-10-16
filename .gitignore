@@ -92,3 +92,8 @@ ap_summary.json
 
 # === LOCAL TOOLING ===
 .claude/
+
+# === paper_eval outputs that hold test-image names or embedded radiographs: local only ===
+paper_eval/results/label_quality.csv
+paper_eval/results/panel_candidates.csv
+paper_eval/review/
