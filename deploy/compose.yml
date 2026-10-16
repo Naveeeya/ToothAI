@@ -1,0 +1,53 @@
+# ToothAI production stack for the Oracle Always Free VM (2 OCPU / 12 GB, arm64).
+# Images are built on the Mac and loaded with `docker load` (deploy/push.sh); nothing is built here.
+#   docker compose -f /opt/toothai/compose.yml up -d
+# Only Caddy publishes ports. The app talks to the photo API on the internal network.
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+services:
+  photo-api:
+    image: toothai-photo-api:${TOOTHAI_VERSION}
+    pull_policy: never
+    restart: unless-stopped
+    volumes:
+      - /opt/toothai/weights/photo:/app/photo_screening/weights:ro
+    environment:
+      PHOTO_DEVICE: cpu
+      PHOTO_VLM_ENABLED: "false"
+      PHOTO_APP_URL: https://${SITE_ADDRESS}
+    mem_limit: 4g
+    logging: *logging
+
+  ui:
+    image: toothai-ui:${TOOTHAI_VERSION}
+    pull_policy: never
+    restart: unless-stopped
+    depends_on:
+      photo-api: {condition: service_healthy}
+    volumes:
+      - /opt/toothai/output:/app/output:ro
+    environment:
+      PHOTO_API_URL: http://photo-api:8001
+    mem_limit: 5g
+    logging: *logging
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [ui]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS}
+    volumes:
+      - /opt/toothai/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    mem_limit: 256m
+    logging: *logging
+
+volumes:
+  caddy-data:
+  caddy-config:

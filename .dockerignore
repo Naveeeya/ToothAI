@@ -1,14 +1,21 @@
-# Whitelist: the photo API image needs only these. Everything else (datasets, checkpoints, venvs) stays out.
+# Whitelist: the two images need only these. Everything else (datasets, checkpoints, venvs,
+# paper_eval outputs with test-image names) stays out of the build context.
 *
-!photo_screening/
+!app.py
+!requirements-app.txt
+!.streamlit/
 !tooth_ai/
 !assets/
-!static/fonts/
+!static/
+!photo_screening/
+!paper_eval/results/coco_eval_716.csv
+!paper_eval/results/decomposition.csv
+!paper_eval/results/paired_deltas.txt
 
 photo_screening/weights/
 photo_screening/.smoke/
 photo_screening/notebooks/
-photo_screening/samples/*.jpg
+photo_screening/.env
 **/__pycache__/
 **/._*
 **/.DS_Store

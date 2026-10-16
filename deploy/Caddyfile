@@ -1,0 +1,20 @@
+# HTTPS in front of the Streamlit app. SITE_ADDRESS is e.g. 129-154-1-2.sslip.io (free DNS for the VM's IP);
+# Caddy obtains and renews the Let's Encrypt certificate itself. WebSockets are proxied automatically.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	request_body {
+		max_size 20MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+	reverse_proxy ui:8501
+	log {
+		output stdout
+		format json
+	}
+}

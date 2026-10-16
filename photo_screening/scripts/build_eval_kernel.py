@@ -11,6 +11,7 @@ release, then writes eval_results_aku.json and the raw-detection cache (re-scora
 
 from __future__ import annotations
 
+import argparse
 import base64
 import io
 import json
@@ -20,7 +21,7 @@ from pathlib import Path
 PKG = Path(__file__).resolve().parents[1]
 OUT = PKG / ".smoke" / "eval_kernel"
 FILES = ["__init__.py", "app/__init__.py", "app/config.py", "app/schemas.py", "app/quality.py", "app/fusion.py",
-         "app/imaging.py", "app/rules.py", "app/models/__init__.py", "app/models/base.py", "app/models/registry.py",
+         "app/imaging.py", "app/rules.py", "app/selection.py", "app/models/__init__.py", "app/models/base.py", "app/models/registry.py",
          "scripts/evaluate.py", "weights/caries_aku/thresholds.json", "weights/teeth_dentalai/thresholds.json"]
 
 
@@ -40,6 +41,12 @@ def cell(src: str, kind: str = "code") -> dict:
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--alphadent-imgsz", type=int, default=None,
+                    help="run AlphaDent at this size (speed study); the kernel gets its own id and output")
+    args = ap.parse_args()
+    suffix = f"-ad{args.alphadent_imgsz}" if args.alphadent_imgsz else ""
+    out_dir = OUT.with_name(OUT.name + suffix)
     blob = snapshot()
     cells = [
         cell("# ToothAI photo screening: AKU evaluation\n\nRuns `photo_screening/scripts/evaluate.py` on the AKU "
@@ -85,27 +92,29 @@ print(root, [p.name for p in root.iterdir()])
 '''),
         cell('''
 os.environ["PHOTO_WEIGHTS_DIR"] = str(weights)
+ALPHADENT_IMGSZ
 r = subprocess.run([sys.executable, str(SRC / "photo_screening/scripts/evaluate.py"), "--aku", str(root),
                     "--cache", str(W / "eval_cache"), "--out", str(W / "eval_results_aku.json")])
 print("exit", r.returncode)
 print(json.dumps(json.load(open(W / "eval_results_aku.json")), indent=1)[:6000])
-'''),
+'''.replace("ALPHADENT_IMGSZ", f'os.environ["PHOTO_ALPHADENT_IMGSZ"] = "{args.alphadent_imgsz}"'
+            if args.alphadent_imgsz else "# AlphaDent at its training size")),
     ]
     nb = {"cells": cells, "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python",
                                                       "name": "python3"}, "accelerator": "GPU"},
           "nbformat": 4, "nbformat_minor": 5}
     for i, c in enumerate(nb["cells"]):
         c["id"] = f"e{i:02d}"
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "eval_aku.ipynb").write_text(json.dumps(nb, indent=1))
-    (OUT / "kernel-metadata.json").write_text(json.dumps({
-        "id": "alphaleporus/tooth-ai-photo-eval-aku", "title": "Tooth-AI photo eval AKU",
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "eval_aku.ipynb").write_text(json.dumps(nb, indent=1))
+    (out_dir / "kernel-metadata.json").write_text(json.dumps({
+        "id": f"alphaleporus/tooth-ai-photo-eval-aku{suffix}", "title": f"Tooth-AI photo eval AKU{suffix}",
         "code_file": "eval_aku.ipynb", "language": "python", "kernel_type": "notebook", "is_private": True,
         "enable_gpu": True, "enable_tpu": False, "enable_internet": True, "machine_shape": "NvidiaTeslaT4",
         "dataset_sources": [], "competition_sources": [], "model_sources": [],
         "kernel_sources": ["alphaleporus/tooth-ai-photo-caries-aku", "alphaleporus/tooth-ai-photo-teeth-dentalai"],
     }, indent=2))
-    print("wrote", OUT, f"(code snapshot {len(blob) // 1024} KB)")
+    print("wrote", out_dir, f"(code snapshot {len(blob) // 1024} KB)")
 
 
 if __name__ == "__main__":
