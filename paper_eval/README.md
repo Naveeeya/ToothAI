@@ -70,11 +70,34 @@ matter; caching decoded ground-truth masks across taus and screening mask IoU
 on bounding boxes first brought it down. Both are exact — a mask lies inside
 its own box, so disjoint boxes imply zero mask IoU and no match changes.
 
+### Engine v2 (on the Mac, CPU, from cached model outputs)
+
+```bash
+python3 paper_eval/cache_outputs.py --split valid --min-teeth 14   # ~25 min: model outputs, numeric ids only
+python3 paper_eval/cache_outputs.py --split test --canonical       # ~25 min: canonical + full-arch images
+python3 paper_eval/learn_template.py                               # arch template from the TRAIN split
+python3 paper_eval/engine_lab.py --split valid                     # compare variants (design)
+python3 paper_eval/engine_lab.py --split test --variants v1,v2 --out results/engine_v2.csv
+```
+
+`cache_outputs.py` stores the 9-class teeth model's raw outputs (boxes, scores, RLE masks) per image under
+`paper_eval/.cache/` (git-ignored), so every engine variant is scored without re-running the model.
+`engine_lab.py` uses this harness's matching (mask IoU >= 0.5), subsets and image bootstrap; with two
+variants it also writes paired deltas. The `v1` row reproduces `full_fix_routing` exactly (recall 94.3 %,
+FDI 61.6 / 76.6 / 35.4 %). On the validation split, which has no audited manifests, full arch means >= 28
+labelled teeth, partial 14-27, and FDI uses only images passing `label_quality.py`'s canonical-mapping
+test (the same test reproduces the 117 canonical test images exactly).
+
+Every v2 design choice was made on the validation split; the test split was scored for the final
+configuration (`results/engine_v2.csv`; validation in `results/engine_v2_valid.csv`).
+
 ## Outputs
 
 | file | contents |
 |---|---|
 | `results/ablation.csv` | one row per configuration; unrun rows are empty with a reason |
+| `results/engine_v2.csv` | engine v1 vs v2 on test: recall, FDI (all/complete/partial) with CIs and paired deltas |
+| `results/engine_v2_valid.csv` | the same on the validation split (where v2 was designed) |
 | `results/per_tooth_recall.csv` | `fdi,config,recall,support`, 32 positions, `single_pass` + `ensemble` |
 | `results/threshold_sweep.csv` | `tau,central_threshold,central_recall,peripheral_recall,teeth_per_image` |
 | `results/position_offsets.csv` | offset histogram, canonical images only |
