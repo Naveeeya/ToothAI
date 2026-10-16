@@ -6,8 +6,9 @@
 
 Metrics and matching are paper_eval's (evalkit: mask IoU >= 0.5, image bootstrap, seed 20260921):
 recall on full-arch images, FDI joint accuracy on canonical images, split into complete and partial
-arches. Test subsets are the paper's manifests; on the validation split (no audited manifests) full arch
-means >= 28 labelled teeth and partial 14-27. Prints numeric ids only.
+arches. Test subsets are the paper's manifests. On the validation split (no audited manifests) full arch
+means >= 28 labelled teeth and partial 14-27, and FDI uses only images passing paper_eval's canonical-mapping
+test (``canonical_ids``), as on test. Prints numeric ids only.
 """
 
 import argparse
@@ -145,7 +146,33 @@ def subsets(split, gt_teeth):
         return man["full_arch"], man["canonical"] & man["full_arch"], man["canonical"] - man["full_arch"]
     full = {i for i, g in gt_teeth.items() if len(g) >= 28}
     part = {i for i, g in gt_teeth.items() if 14 <= len(g) < 28}
-    return full, full, part
+    canon = canonical_ids(gt_teeth)
+    return full, full & canon, part & canon
+
+
+def canonical_ids(gt_teeth):
+    """paper_eval's canonical-mapping test (label_quality.py), applied to another split: in each jaw the
+    labels read left to right must follow the canonical class order, with no duplicate class."""
+    cmap = K.load_class_map()
+    order = {jaw: [c for c, _ in sorted(((c, v[1]) for c, v in cmap.items() if v[0] == jaw), key=lambda x: x[1])]
+             for jaw in ("upper", "lower")}
+
+    def subseq(seq, ref):
+        it = iter(ref)
+        return all(any(x == y for y in it) for x in seq)
+
+    out = set()
+    for iid, anns in gt_teeth.items():
+        ids = [a["category_id"] for a in anns]
+        if not ids or len(ids) != len(set(ids)) or any(c not in cmap for c in ids):
+            continue
+        seqs = {}
+        for jaw in ("upper", "lower"):
+            seqs[jaw] = [a["category_id"] for a in sorted(anns, key=lambda a: a["bbox"][0] + a["bbox"][2] / 2)
+                         if cmap[a["category_id"]][0] == jaw]
+        if all(subseq(seqs[j], order[j]) for j in seqs):
+            out.add(iid)
+    return out
 
 
 def run(split, names, cache_dir):
