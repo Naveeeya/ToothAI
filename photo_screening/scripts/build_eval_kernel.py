@@ -21,7 +21,8 @@ from pathlib import Path
 PKG = Path(__file__).resolve().parents[1]
 OUT = PKG / ".smoke" / "eval_kernel"
 FILES = ["__init__.py", "app/__init__.py", "app/config.py", "app/schemas.py", "app/quality.py", "app/fusion.py",
-         "app/imaging.py", "app/rules.py", "app/selection.py", "app/models/__init__.py", "app/models/base.py", "app/models/registry.py",
+         "app/imaging.py", "app/rules.py", "app/selection.py", "app/models/__init__.py", "app/models/base.py",
+         "app/models/registry.py",
          "scripts/evaluate.py", "weights/caries_aku/thresholds.json", "weights/teeth_dentalai/thresholds.json"]
 
 
