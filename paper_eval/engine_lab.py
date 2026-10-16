@@ -41,6 +41,37 @@ def teeth_from(rec, name):
     return out
 
 
+def net41_teeth(rec):
+    """Tooth boxes from the 41-class findings model (class ids 0-32 are teeth there)."""
+    p = rec.get("net41")
+    if not p:
+        return []
+    return [{"box": b, "score": sc, "rle": m, "pass": "net41"}
+            for b, sc, c, m in zip(p["boxes"], p["scores"], p["classes"], p["masks"]) if c <= 32]
+
+
+NET41_MIN = 0.7
+
+
+def add_missing(base, extra, min_score):
+    """Add extra-model teeth only where no base detection sits (IoU > 0.3 or mostly contained)."""
+    out = list(base)
+    for e in sorted(extra, key=lambda d: -d["score"]):
+        if e["score"] < min_score:
+            continue
+        if any(P.compute_iou(e["box"], b["box"]) > 0.3 or _contained(e["box"], b["box"]) for b in out):
+            continue
+        out.append(e)
+    return out
+
+
+def _contained(a, b, thr=0.6):
+    x1, y1, x2, y2 = max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    small = min((a[2] - a[0]) * (a[3] - a[1]), (b[2] - b[0]) * (b[3] - b[1]))
+    return small > 0 and inter / small >= thr
+
+
 def mask_of(d):
     if "mask" not in d:
         d["mask"] = mask_util.decode({"size": d["rle"]["size"], "counts": d["rle"]["counts"].encode()}).astype(bool)
@@ -110,6 +141,9 @@ def detections(rec, inputs, zone):
         dets = teeth_from(rec, "big")
     elif inputs == "orig+big":
         dets = fuse([teeth_from(rec, "orig"), teeth_from(rec, "big")])
+    elif inputs == "orig+net41":
+        base = [d for d in teeth_from(rec, "orig") if d["score"] >= TAU]
+        dets = add_missing(base, net41_teeth(rec), NET41_MIN)
     else:
         raise ValueError(inputs)
     return threshold(dets, w, zone=zone)
@@ -140,6 +174,7 @@ VARIANTS = {
     # the configuration the app ships as engine "v2" (tooth_ai.engine_v2.DEFAULTS, one pass, uniform threshold)
     "v2": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "numbering": "template"}),
     "v2-gap": ("1pass", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve"}),
+    "v2+41": ("orig+net41", False, "v2", "symmetry", {"dedupe": True, "jaw_split": "curve", "numbering": "template"}),
 }
 
 
@@ -239,7 +274,11 @@ def main():
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--gap-ratio", type=float, default=None, help="override engine_v2.GAP_RATIO (sweeps)")
     ap.add_argument("--tau", type=float, default=None, help="override the tooth threshold (sweeps)")
+    ap.add_argument("--net41-min", type=float, default=None, help="score floor for 41-class teeth (v2+41)")
     args = ap.parse_args()
+    if args.net41_min:
+        global NET41_MIN
+        NET41_MIN = args.net41_min
     if args.tau:
         global TAU
         TAU = args.tau

@@ -47,6 +47,8 @@ def main():
     ap.add_argument("--canonical", action="store_true",
                     help="test split: the 117 canonical images and the 93 full-arch images (recall)")
     ap.add_argument("--threads", type=int, default=6)
+    ap.add_argument("--add41", action="store_true",
+                    help="add the 41-class findings model's original-image pass (key 'net41') to cached files")
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
 
@@ -69,8 +71,32 @@ def main():
     cfg.MODEL.WEIGHTS = os.path.join(K.TEETH_MODEL, "model_final.pth")
     cfg.MODEL.DEVICE = "cpu"
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
+    if args.add41:
+        cfg.merge_from_file(os.path.join(K.ANOM_MODEL, "config.yaml"))
+        cfg.MODEL.WEIGHTS = os.path.join(K.ANOM_MODEL, "model_final.pth")
+        cfg.MODEL.DEVICE = "cpu"
+        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05
     pred = DefaultPredictor(cfg)
     base = (pred.aug.short_edge_length, pred.aug.max_size)
+    if args.add41:
+        t0, done = time.time(), 0
+        for n, iid in enumerate(ids):
+            path = os.path.join(out_dir, f"{iid}.json")
+            if not os.path.exists(path):
+                continue
+            rec = json.load(open(path))
+            if "net41" in rec:
+                continue
+            img = cv2.imread(os.path.join(K.SPLIT_DIR, images[iid]["file_name"]))
+            rec["net41"] = encode(pred(img)["instances"])
+            with open(path + ".tmp", "w") as fh:
+                json.dump(rec, fh)
+            os.replace(path + ".tmp", path)
+            done += 1
+            if done % 20 == 0:
+                print(f"{n + 1}/{len(ids)} ({(time.time() - t0) / done:.1f} s/img)", flush=True)
+        print("added net41 to", done, "files")
+        return
 
     t0, done = time.time(), 0
     for n, iid in enumerate(ids):
