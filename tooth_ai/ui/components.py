@@ -192,6 +192,8 @@ def why_this_number(tooth, result):
     """Plain-language account of how the geometric engine numbered this tooth."""
     tr = tooth.get("trace") or {}
     jaw = "upper" if tr.get("jaw") == "upper" else "lower"
+    if tr.get("engine") == "v2":
+        return _why_v2(tooth, tr, jaw)
     steps = [
         f"Its centre lies {'above' if jaw == 'upper' else 'below'} the jaw split line, so it "
         f"belongs to the <b>{jaw} jaw</b>.",
@@ -211,6 +213,31 @@ def why_this_number(tooth, result):
                      f"also claimed; it moved to the nearest free number in the quadrant.")
     if tr.get("overflow"):
         steps.append("The jaw ran out of numbers, so it took the last one; treat it as uncertain.")
+    items = "".join(f"<li>{s}</li>" for s in steps)
+    return f'<div class="ta-why"><b>Why this number?</b><ol>{items}</ol></div>'
+
+
+def _why_v2(tooth, tr, jaw):
+    """Engine v2: jaws by the bite line, numbers by position outward from the dental midline."""
+    side = "right" if tr.get("side") == "right" else "left"
+    pos = tooth["fdi"] % 10
+    names = {1: "central incisor", 2: "lateral incisor", 3: "canine", 4: "first premolar", 5: "second premolar",
+             6: "first molar", 7: "second molar", 8: "third molar"}
+    steps = [f"Its centre lies {'above' if jaw == 'upper' else 'below'} the fitted bite line, so it belongs to the "
+             f"<b>{jaw} jaw</b>.",
+             f"It is on the <b>patient's {side}</b> of the dental midline (the image's {'left' if side == 'right' else 'right'}"
+             f"), tooth <b>{tr.get('rank', '?')}</b> counting outward from the midline."]
+    if tr.get("template_distance") is not None:
+        steps.append(f"Its centre is <b>{tr['template_distance']:.1f} tooth widths</b> from the midline, which best fits "
+                     f"position <b>{pos}</b> ({names.get(pos, '')}) in the arch layout learned from the training images.")
+    if tr.get("skipped"):
+        steps.append(f"<b>{tr['skipped']} position{'s' if tr['skipped'] > 1 else ''}</b> between it and the previous tooth "
+                     "stay empty: a missing or undetected tooth, so later numbers do not shift.")
+    if tr.get("reassigned_from"):
+        steps.append(f"It first received <b>{tr['reassigned_from']}</b>, which a higher-scoring tooth also claimed; it "
+                     "moved to the nearest free number in the quadrant.")
+    if tr.get("overflow") or tr.get("conflict"):
+        steps.append("More teeth than positions were found on this side; treat this number as uncertain.")
     items = "".join(f"<li>{s}</li>" for s in steps)
     return f'<div class="ta-why"><b>Why this number?</b><ol>{items}</ol></div>'
 
@@ -240,7 +267,7 @@ def empty_state():
     st.html(
         f'<div class="ta-hero"><img src="{data_uri("assets/brand/tooth-ai-mark.svg")}" alt="">'
         f'<h2>Upload a panoramic radiograph (OPG)</h2>'
-        f'<p>JPG, PNG or BMP, up to 50 MB. Use the panel on the left, or open a sample case. '
+        f'<p>JPG, PNG or BMP, up to 15 MB. Use the panel on the left, or open a sample case. '
         f'Images are analysed in memory and are not stored.</p>'
         f'<div class="ta-steps">'
         f'<div><em>01</em><b>Detect</b><span>Instance masks for every tooth and finding.</span></div>'

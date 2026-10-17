@@ -84,6 +84,7 @@ class AnalysisResult:
     reliability: Reliability
     timings: dict
     source: str = "model"            # "model" | "demo"
+    engine: str = "v1"               # numbering engine: "v1" (published) | "v2" (tooth_ai.engine_v2)
 
     @property
     def total_seconds(self):
@@ -148,7 +149,7 @@ def assess_reliability(teeth, mode="Full chart", engine="v1"):
 
     if total < LOW_TOTAL:
         return Reliability(
-            "alert", "Low tooth count — check image quality",
+            "alert", "Low tooth count: check image quality",
             f"Only {total} teeth were detected. Numbering is unreliable when most of the "
             "arch is missing or the image is not a panoramic radiograph.",
             [f"{total} teeth detected"], confidence)
@@ -172,7 +173,7 @@ def assess_reliability(teeth, mode="Full chart", engine="v1"):
         measured = (f"On complete arches numbering measured {pct(evidence.deployed_summary()['complete'], 0)} "
                     "FDI accuracy." if engine == "v1" else "See the Performance page for measured accuracy.")
         return Reliability(
-            "ok", "Complete arches — numbering reliable",
+            "ok", "Complete arches: numbering reliable",
             "Both jaws are close to complete, with no gaps or conflicts. " + measured,
             [], confidence)
 
@@ -187,7 +188,7 @@ def assess_reliability(teeth, mode="Full chart", engine="v1"):
            "Numbers are counted outward from the midline, so a missing tooth can shift the numbers beyond it "
            "on that side.")
     return Reliability(
-        "caution", f"{title} — numbers may be shifted",
+        "caution", f"{title}: numbers may be shifted",
         how + " Review the highlighted jaw before relying on the chart.",
         reasons, confidence)
 
@@ -242,7 +243,7 @@ def chart_from_detections(raw_teeth, raw_anomalies, image_shape, mode="Full char
     return AnalysisResult(
         mode=mode, teeth=all_teeth, findings=raw_anomalies, unassigned=unassigned,
         geometry=_geometry(teeth_nms, all_teeth, image_shape),
-        reliability=assess_reliability(all_teeth, mode, engine), timings=timings, source=source)
+        reliability=assess_reliability(all_teeth, mode, engine), timings=timings, source=source, engine=engine)
 
 
 def analyze(image_bgr, mode, predictors, teeth_threshold=DEFAULT_TEETH_THRESHOLD,

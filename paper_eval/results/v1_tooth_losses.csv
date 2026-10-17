@@ -1,0 +1,37 @@
+# Tooth-AI paper_eval
+# split: data/final-di-stratified/test  (716 images)
+# teeth model:   output/resnet50_9class_20k/model_final.pth
+#   sha256:      d485b32de4fca7596af5bade38c02a108d76f79343de3e1f04b907558b3516d3
+#   input size:  MIN_SIZE_TEST=800 MAX_SIZE_TEST=1333
+# git: c91931b02b745b7061de76d60a53c28f0d27a9f3+dirty
+# gpu: no-nvidia-smi
+# seed: 20260921   bootstrap resamples: 10000
+# NOTE: recall only. With a median of 8 labelled teeth per image, an
+#   unlabelled but correctly detected tooth scores as a false positive,
+#   so precision and FP/image are NOT meaningful on this ground truth.
+# trace_losses.py: every labelled tooth on the 93 full-arch test images traced
+# through the deployed pipeline (full_fix_routing), stage by stage
+stage,description,tooth_type,count
+final,deleted by FDI conflict resolution,central incisor,7
+final,deleted by FDI conflict resolution,canine,1
+final,deleted by FDI conflict resolution,second molar,19
+final,deleted by FDI conflict resolution,third molar,11
+fused,lost in two-pass fusion,canine,1
+nms,removed by DIoU-NMS,first molar,1
+pruned,deleted by the 32-tooth pruning,central incisor,6
+pruned,deleted by the 32-tooth pruning,lateral incisor,1
+pruned,deleted by the 32-tooth pruning,first premolar,1
+pruned,deleted by the 32-tooth pruning,second premolar,1
+pruned,deleted by the 32-tooth pruning,second molar,5
+pruned,deleted by the 32-tooth pruning,third molar,2
+seen,never detected by the model (score >= 0.05),central incisor,10
+seen,never detected by the model (score >= 0.05),lateral incisor,13
+seen,never detected by the model (score >= 0.05),canine,7
+seen,never detected by the model (score >= 0.05),first premolar,7
+seen,never detected by the model (score >= 0.05),second premolar,5
+seen,never detected by the model (score >= 0.05),first molar,22
+seen,never detected by the model (score >= 0.05),second molar,39
+seen,never detected by the model (score >= 0.05),third molar,8
+threshold,below the tooth threshold,canine,1
+threshold,below the tooth threshold,second premolar,1
+kept,detected and kept,all,2807

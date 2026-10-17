@@ -117,7 +117,7 @@ def _numbered_canvas(fonts, case_line):
             self.setFont(fonts["sans"], 7.2)
             self.setFillColor(INK_500)
             self.drawString(MARGIN, 9 * mm,
-                            f"{tooth_ai.PRODUCT_NAME} · Research prototype — not for diagnostic use")
+                            f"{tooth_ai.PRODUCT_NAME} · Research prototype. Not for diagnostic use")
             self.drawRightString(PAGE_W - MARGIN, 9 * mm, f"{case_line} · Page {page} of {total}")
             self.setStrokeColor(SLATE_300)
             self.setLineWidth(0.5)
@@ -235,6 +235,38 @@ def _table(rows, widths, fonts, header_bg=INK_900):
     return t
 
 
+def _method_text(result):
+    if getattr(result, "engine", "v1") == "v2":
+        return ("A Mask R-CNN network segments every tooth and finding in one pass. The improved numbering engine "
+                "removes duplicate detections, keeps at most 32 teeth before numbering (never dropping a detected "
+                "one), splits the jaws along a fitted bite line, finds the dental midline from the symmetry of "
+                "tooth widths and numbers each tooth by its distance from the midline, matched in order to an arch "
+                "layout learned from training images; a missing tooth leaves its position empty. Findings are "
+                "attached to the tooth they overlap, and caries next to metal restorations is down-weighted.")
+    return ("A Mask R-CNN network segments every tooth and finding on the original image and on a "
+            "contrast-enhanced (CLAHE) copy; the two passes are fused. A geometric engine then "
+            "splits the jaws, orders the teeth along each arch and assigns FDI numbers, skipping "
+            "numbers where the gap implies a missing tooth. Findings are attached to the tooth they "
+            "overlap, and anatomical rules remove duplicate numbers and down-weight caries next to "
+            "metal restorations.")
+
+
+def _limitations_text(result, ev):
+    tail = (" Finding (caries, restoration) accuracy has not been validated. "
+            "Region labels refer to the image: its left side is the patient's right.")
+    v2 = evidence.engine_v2().get("v2") if getattr(result, "engine", "v1") == "v2" else None
+    if v2:
+        return (f"Measured on held-out panoramic radiographs with the improved engine: tooth detection recall "
+                f"{pct(v2['recall'])}; FDI numbering {pct(v2['complete'])} accurate on complete arches and "
+                f"{pct(v2['partial'])} on partial arches, where a missing or undetected tooth can still shift a "
+                "number. The improved engine is a beta, not the published configuration." + tail)
+    return (f"Measured on 716 held-out panoramic radiographs in the configuration this report "
+            f"uses: tooth detection recall {pct(ev['recall'])} and jaw assignment {pct(ev['jaw'])}. "
+            f"FDI numbering was {pct(ev['complete'])} accurate on complete arches but "
+            f"{pct(ev['partial'])} on partial arches, because one missing tooth shifts every later "
+            "number in that jaw." + tail)
+
+
 def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
     """Return the PDF as bytes."""
     fonts = _register_fonts()
@@ -256,7 +288,7 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
     # Case details
     upper, lower = result.jaw_counts()
     meta = [
-        ["Case", case_id or "—", "Date", created.strftime("%d %b %Y, %H:%M")],
+        ["Case", case_id or "-", "Date", created.strftime("%d %b %Y, %H:%M")],
         ["Mode", result.mode, "Notation", notation],
         ["Teeth detected", f"{len(result.teeth)} of 32 (upper {upper}, lower {lower})",
          "Image", f"{w} × {h} px"],
@@ -296,7 +328,7 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
         story += [PageBreak(), Paragraph(escape(f"Teeth ({len(result.teeth)} of 32 detected)"), st["h2"])]
         rows = [["Tooth", "Name", "Findings", "Score"]]
         for t in result.teeth:
-            f = ", ".join(x["type"] + (" (near metal)" if x.get("near_metal") else "") for x in t["findings"]) or "—"
+            f = ", ".join(x["type"] + (" (near metal)" if x.get("near_metal") else "") for x in t["findings"]) or "-"
             rows.append([Paragraph(escape(str(tooth_label(t["fdi"], notation))), st["cellmono"]),
                          Paragraph(escape(str(tooth_name(t["fdi"]))), st["cell"]), Paragraph(escape(f), st["cell"]),
                          Paragraph(escape(f"{t['score']:.2f}"), st["cellmono"])])
@@ -312,19 +344,9 @@ def build_pdf(result, annotated_rgb, case_id="", notation="FDI", created=None):
     story += [KeepTogether([
         Paragraph("Method", st["h2"]),
         Paragraph(f"<i>{escape(tooth_ai.FULL_TITLE)}</i>.", st["body"]), Spacer(1, 2 * mm),
-        Paragraph("A Mask R-CNN network segments every tooth and finding on the original image and on a "
-                  "contrast-enhanced (CLAHE) copy; the two passes are fused. A geometric engine then "
-                  "splits the jaws, orders the teeth along each arch and assigns FDI numbers, skipping "
-                  "numbers where the gap implies a missing tooth. Findings are attached to the tooth they "
-                  "overlap, and anatomical rules remove duplicate numbers and down-weight caries next to "
-                  "metal restorations.", st["body"]),
+        Paragraph(escape(_method_text(result)), st["body"]),
         Paragraph("Limitations", st["h2"]),
-        Paragraph(escape(f"Measured on 716 held-out panoramic radiographs in the configuration this report "
-                         f"uses: tooth detection recall {pct(ev['recall'])} and jaw assignment {pct(ev['jaw'])}. "
-                         f"FDI numbering was {pct(ev['complete'])} accurate on complete arches but "
-                         f"{pct(ev['partial'])} on partial arches, because one missing tooth shifts every later "
-                         "number in that jaw. Finding (caries, restoration) accuracy has not been validated. "
-                         "Region labels refer to the image: its left side is the patient's right."), st["body"]),
+        Paragraph(escape(_limitations_text(result, ev)), st["body"]),
         Spacer(1, 4 * mm),
         Paragraph(f"<font name='{fonts['bold']}'>{escape(tooth_ai.DISCLAIMER)}</font>", st["body"]),
     ])]

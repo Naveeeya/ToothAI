@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ToothAI diagrams</title>
+<style>
+@font-face { font-family: "Jakarta"; src: url("../../static/fonts/PlusJakartaSans-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Jakarta"; src: url("../../static/fonts/PlusJakartaSans-Medium.ttf"); font-weight: 500; }
+@font-face { font-family: "Jakarta"; src: url("../../static/fonts/PlusJakartaSans-Bold.ttf"); font-weight: 700; }
+@font-face { font-family: "Jakarta"; src: url("../../static/fonts/PlusJakartaSans-ExtraBold.ttf"); font-weight: 800; }
+@font-face { font-family: "Mono"; src: url("../../static/fonts/JetBrainsMono-Regular.ttf"); }
+:root { --navy:#0E2236; --spark:#2D6FDB; --light:#7FA9F5; --ice:#EAF1FC; --paper:#F7F9FB; --slate:#5B6B78;
+        --line:#C9D4E0; --alert:#C2410C; --ok:#16A34A; }
+body { margin:0; background:#fff; font-family:"Jakarta",sans-serif; color:var(--navy); }
+figure { margin:0; padding:28px 32px 24px; width:1240px; box-sizing:border-box; background:#fff; }
+h2 { font-weight:800; letter-spacing:-0.02em; margin:0 0 4px; font-size:24px; }
+.sub { color:var(--slate); font-size:14px; margin:0 0 18px; }
+svg text { font-family:"Jakarta",sans-serif; fill:var(--navy); }
+.box { fill:#fff; stroke:var(--line); stroke-width:1.5; rx:10; }
+.ice { fill:var(--ice); stroke:#BFD3F5; }
+.navy { fill:var(--navy); stroke:var(--navy); }
+.spark { fill:var(--spark); stroke:var(--spark); }
+.warn { fill:#FFF6F2; stroke:#F2C4AE; }
+.t { font-size:15px; font-weight:700; }
+.s { font-size:12.5px; fill:var(--slate); }
+.w { fill:#fff !important; }
+.m { font-family:"Mono",monospace !important; font-size:11.5px; fill:var(--slate); }
+.arrow { stroke:var(--spark); stroke-width:2; fill:none; marker-end:url(#ah); }
+.arrow2 { stroke:var(--slate); stroke-width:1.5; fill:none; marker-end:url(#ah2); stroke-dasharray:5 4; }
+.tag { font-size:11px; font-weight:700; fill:var(--spark); letter-spacing:0.06em; }
+.foot { color:var(--slate); font-size:12px; margin-top:10px; }
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#2D6FDB"/></marker>
+<marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5B6B78"/></marker>
+</defs></svg>
+
+<!-- 1. System architecture -->
+<figure id="architecture">
+<h2>ToothAI system architecture</h2>
+<p class="sub">One web app with two analysis paths: panoramic radiographs (OPG) and smartphone intraoral photos.</p>
+<svg width="1176" height="560" viewBox="0 0 1176 560">
+  <rect class="box" x="10" y="220" width="150" height="110"/>
+  <text class="t" x="85" y="258" text-anchor="middle">Browser</text>
+  <text class="s" x="85" y="282" text-anchor="middle">clinician, student</text>
+  <text class="s" x="85" y="300" text-anchor="middle">or patient</text>
+  <path class="arrow" d="M160,275 L215,275"/>
+  <rect class="box navy" x="220" y="225" width="150" height="100"/>
+  <text class="t w" x="295" y="263" text-anchor="middle">Caddy</text>
+  <text class="s w" x="295" y="286" text-anchor="middle">HTTPS (Let's Encrypt)</text>
+  <text class="s w" x="295" y="304" text-anchor="middle">public entry, :443</text>
+  <path class="arrow" d="M370,275 L425,275"/>
+  <rect class="box ice" x="430" y="40" width="330" height="480"/>
+  <text class="tag" x="450" y="66">STREAMLIT APP · app.py</text>
+  <g font-size="13">
+    <rect class="box" x="450" y="82" width="290" height="64"/><text class="t" x="466" y="108">Analyse</text>
+    <text class="s" x="466" y="128">OPG or sample case: overlay, chart, PDF</text>
+    <rect class="box" x="450" y="156" width="290" height="64"/><text class="t" x="466" y="182">Photo screening</text>
+    <text class="s" x="466" y="202">5 intraoral photos, triage, screening PDF</text>
+    <rect class="box" x="450" y="230" width="290" height="44"/><text class="t" x="466" y="257">How it works</text>
+    <rect class="box" x="450" y="282" width="290" height="44"/><text class="t" x="466" y="309">Performance</text>
+    <text class="s" x="590" y="309">from paper_eval</text>
+    <rect class="box" x="450" y="334" width="290" height="44"/><text class="t" x="466" y="361">About</text>
+    <text class="tag" x="450" y="408">SHARED</text>
+    <text class="s" x="450" y="430">tooth_ai/ui: brand theme, components</text>
+    <text class="s" x="450" y="450">tooth_ai/report_pdf.py: PDF styling</text>
+    <text class="s" x="450" y="470">consent, metadata stripping, one analysis</text>
+    <text class="s" x="450" y="488">at a time, uploads ≤ 15 MB</text>
+  </g>
+  <path class="arrow" d="M760,114 L815,114"/>
+  <rect class="box" x="820" y="40" width="346" height="196"/>
+  <text class="tag" x="840" y="66">OPG ENGINE · tooth_ai/</text>
+  <text class="t" x="840" y="92">Mask R-CNN R50 (Detectron2)</text>
+  <text class="s" x="840" y="112">9-class: teeth + 8 findings · 41-class: findings</text>
+  <text class="t" x="840" y="142">Geometric engine</text>
+  <text class="s" x="840" y="162">v1 (published) or v2 (improved): clean-up,</text>
+  <text class="s" x="840" y="180">jaw split, midline, FDI numbering by position</text>
+  <text class="s" x="840" y="206">findings mapped to teeth, anatomical checks</text>
+  <text class="m" x="840" y="226">pipeline.py · engine_v2.py · analysis.py</text>
+  <path class="arrow" d="M760,188 L815,320"/>
+  <text class="s" x="700" y="560" style="display:none"></text><text class="s" x="770" y="262">HTTP,</text><text class="s" x="770" y="278">internal</text>
+  <rect class="box" x="820" y="270" width="346" height="250"/>
+  <text class="tag" x="840" y="296">PHOTO SCREENING API · FastAPI</text>
+  <text class="t" x="840" y="322">AlphaDent YOLOv8x-seg</text>
+  <text class="s" x="840" y="340">wear, fillings, crowns, caries (DSLR-trained)</text>
+  <text class="t" x="840" y="366">AKU caries YOLOv8s</text>
+  <text class="s" x="840" y="384">smartphone-trained, + grey-world colour pass</text>
+  <text class="t" x="840" y="410">DentalAI teeth YOLOv8s-seg</text>
+  <text class="s" x="840" y="428">tooth outlines, mouth check, positions</text>
+  <text class="s" x="840" y="456">quality gate · fusion · fixed rules · triage</text>
+  <text class="s" x="840" y="474">screening index · PDF · optional local VLM</text>
+  <text class="m" x="840" y="500">photo_screening/app/ · not exposed publicly</text>
+  <text class="s" x="10" y="548">Weights are mounted read-only from the server's disk (never in git or the images). No uploads are stored.</text>
+</svg>
+</figure>
+
+<!-- 2. OPG engine v2 -->
+<figure id="opg-engine">
+<h2>OPG analysis pipeline (engine v2)</h2>
+<p class="sub">From a panoramic radiograph to a numbered dental chart. Grey notes show what the published engine (v1) did differently.</p>
+<svg width="1176" height="720" viewBox="0 0 1176 720">
+  <rect class="box ice" x="10" y="30" width="170" height="80"/><text class="t" x="95" y="64" text-anchor="middle">Panoramic X-ray</text>
+  <text class="s" x="95" y="86" text-anchor="middle">pixels only, ≤ 60 MP</text>
+  <path class="arrow" d="M180,70 L225,70"/>
+  <rect class="box" x="230" y="30" width="250" height="80"/><text class="t" x="245" y="60">Mask R-CNN, one pass</text>
+  <text class="s" x="245" y="82">teeth + findings with masks, score ≥ 0.05</text>
+  <text class="s" x="245" y="100">short edge 800 px (training size)</text>
+  <path class="arrow" d="M480,70 L515,70"/>
+  <rect class="box" x="520" y="30" width="200" height="80"/><text class="t" x="535" y="60">Tooth threshold</text>
+  <text class="s" x="535" y="82">0.20 everywhere</text>
+  <path class="arrow" d="M720,70 L755,70"/>
+  <rect class="box" x="760" y="30" width="200" height="80"/><text class="t" x="775" y="60">DIoU-NMS 0.4</text>
+  <text class="s" x="775" y="82">overlapping boxes</text>
+  <path class="arrow" d="M960,70 L1000,70 L1000,215 L965,215"/>
+  <text class="s" x="245" y="132">v1: two passes (original + CLAHE); one-pass</text>
+  <text class="s" x="245" y="148">hits × 0.6, so real teeth fell under 0.20</text>
+  <text class="s" x="535" y="132">v1: 0.14 in the central zone,</text>
+  <text class="s" x="535" y="148">which is the easy zone</text>
+  <rect class="box spark" x="760" y="175" width="200" height="80"/><text class="t w" x="775" y="205">Duplicate removal</text>
+  <text class="s w" x="775" y="227">mask mostly inside a</text><text class="s w" x="775" y="243">stronger detection</text>
+  <path class="arrow" d="M760,215 L725,215"/>
+  <rect class="box spark" x="520" y="175" width="200" height="80"/><text class="t w" x="535" y="205">Cap before numbering</text>
+  <text class="s w" x="535" y="227">32 by score, 16 per jaw;</text><text class="s w" x="535" y="243">never delete a tooth</text>
+  <path class="arrow" d="M520,215 L485,215"/>
+  <rect class="box spark" x="230" y="175" width="250" height="80"/><text class="t w" x="245" y="205">Jaw split by bite line</text>
+  <text class="s w" x="245" y="227">quadratic fit through each jaw,</text><text class="s w" x="245" y="243">line half-way between them</text>
+  <path class="arrow" d="M355,255 L355,312"/>
+  <rect class="box spark" x="230" y="315" width="250" height="80"/><text class="t w" x="245" y="345">Dental midline</text>
+  <text class="s w" x="245" y="367">gap whose two sides best mirror</text><text class="s w" x="245" y="383">each other's tooth widths</text>
+  <path class="arrow" d="M480,355 L515,355"/>
+  <rect class="box spark" x="520" y="315" width="440" height="80"/><text class="t w" x="535" y="345">FDI numbering by position</text>
+  <text class="s w" x="535" y="367">distance from the midline in tooth widths, aligned in order</text>
+  <text class="s w" x="535" y="383">to a template from the training split; gaps stay empty</text>
+  <path class="arrow" d="M960,355 L1000,355 L1000,475 L965,475"/>
+  <text class="s" x="10" y="190">v1 instead:</text>
+  <text class="s" x="10" y="208">• median-height jaw split</text>
+  <text class="s" x="10" y="224">  (forces equal halves)</text>
+  <text class="s" x="10" y="242">• pruned after numbering</text>
+  <text class="s" x="10" y="260">• conflict losers deleted</text>
+  <text class="s" x="10" y="278">• numbered from the</text>
+  <text class="s" x="10" y="294">  patient's right end</text>
+  <rect class="box" x="760" y="435" width="200" height="80"/><text class="t" x="775" y="465">Findings → teeth</text>
+  <text class="s" x="775" y="487">best IoU &gt; 0.15, else</text><text class="s" x="775" y="503">"not mapped to a tooth"</text>
+  <path class="arrow" d="M760,475 L725,475"/>
+  <rect class="box" x="520" y="435" width="200" height="80"/><text class="t" x="535" y="465">Anatomical checks</text>
+  <text class="s" x="535" y="487">caries next to metal</text><text class="s" x="535" y="503">restorations down-weighted</text>
+  <path class="arrow" d="M520,475 L485,475"/>
+  <rect class="box ice" x="230" y="435" width="250" height="80"/><text class="t" x="245" y="465">Outputs</text>
+  <text class="s" x="245" y="487">overlay viewer, dental chart, per-</text><text class="s" x="245" y="503">tooth table, reliability, PDF / JSON</text>
+  <rect class="box warn" x="10" y="560" width="1156" height="118"/>
+  <text class="t" x="30" y="590">Measured on the 716-image test split (paper_eval, paired bootstrap 95 % CI)</text>
+  <text class="s" x="30" y="616">FDI accuracy, 117 canonical images: v1 61.6 % → v2 85.8 % (+24.2 pp [+18.6, +30.0]) · complete arches 76.6 → 90.6 % · partial arches 35.4 → 77.4 %</text>
+  <text class="s" x="30" y="638">Tooth detection recall, 93 full-arch images: 94.3 → 95.5 % (+1.2 pp [+0.7, +1.7]). Every v2 choice was made on the validation split.</text>
+  <text class="s" x="30" y="660">Still open: 3.7 % of teeth (mostly second molars) are never detected by the model; that needs retraining.</text>
+</svg>
+</figure>
+
+<!-- 3. Photo screening -->
+<figure id="photo-pipeline">
+<h2>Photo screening pipeline</h2>
+<p class="sub">Up to five smartphone photos in, a screening report out. A screening aid, not a diagnosis: it recommends an OPG when something is seen.</p>
+<svg width="1176" height="560" viewBox="0 0 1176 560">
+  <rect class="box ice" x="10" y="40" width="170" height="120"/><text class="t" x="95" y="74" text-anchor="middle">5 photos</text>
+  <text class="s" x="95" y="96" text-anchor="middle">front, upper, lower,</text><text class="s" x="95" y="114" text-anchor="middle">left, right</text>
+  <text class="s" x="95" y="140" text-anchor="middle">consent required</text>
+  <path class="arrow" d="M180,100 L220,100"/>
+  <rect class="box" x="225" y="40" width="190" height="120"/><text class="t" x="240" y="70">Clean the upload</text>
+  <text class="s" x="240" y="92">EXIF, GPS, device data</text><text class="s" x="240" y="110">removed; neutral names;</text>
+  <text class="s" x="240" y="128">orientation applied</text>
+  <path class="arrow" d="M415,100 L455,100"/>
+  <rect class="box" x="460" y="40" width="190" height="120"/><text class="t" x="475" y="70">Quality gate</text>
+  <text class="s" x="475" y="92">blur, exposure,</text><text class="s" x="475" y="110">resolution (hard);</text>
+  <text class="s" x="475" y="128">mouth check</text><text class="s" x="475" y="146">→ retake tips</text>
+  <path class="arrow" d="M650,100 L690,100"/>
+  <rect class="box" x="695" y="20" width="270" height="160"/><text class="tag" x="710" y="44">THREE DETECTORS</text>
+  <text class="t" x="710" y="68">AlphaDent YOLOv8x-seg</text><text class="s" x="710" y="86">wear, fillings, crowns, caries</text>
+  <text class="t" x="710" y="110">AKU caries YOLOv8s</text><text class="s" x="710" y="128">+ grey-world copy (indoor light)</text>
+  <text class="t" x="710" y="152">DentalAI teeth YOLOv8s-seg</text><text class="s" x="710" y="170">tooth outlines and positions</text>
+  <path class="arrow" d="M965,100 L1005,100"/>
+  <rect class="box" x="1010" y="40" width="156" height="120"/><text class="t" x="1025" y="70">Fuse</text>
+  <text class="s" x="1025" y="92">same spot across</text><text class="s" x="1025" y="110">models: IoU 0.55</text><text class="s" x="1025" y="128">or 60 % inside</text>
+  <path class="arrow" d="M1088,160 L1088,215 L965,215"/>
+  <rect class="box spark" x="460" y="200" width="505" height="150"/><text class="tag w" x="475" y="224" style="fill:#fff">FIXED RULES (NOT AI), EACH MEASURED</text>
+  <text class="s w" x="475" y="250">• AlphaDent caries alone dropped (2–5 % precision on phone photos)</text>
+  <text class="s w" x="475" y="272">• weak agreement kept: phone model 0.20–0.48 + AlphaDent ≥ 0.50 (10 of 13 real)</text>
+  <text class="s w" x="475" y="294">• decay wins over a "filling" on the same spot; fillings/crowns from 0.55</text>
+  <text class="s w" x="475" y="316">• wear/restorations at the frame edge dropped (fingers); cavity/crack off</text>
+  <text class="s w" x="475" y="338">• bands: High needs a phone-trained model or two agreeing models</text>
+  <path class="arrow" d="M460,275 L420,275"/>
+  <rect class="box" x="225" y="200" width="190" height="150"/><text class="t" x="240" y="230">Triage</text>
+  <text class="s" x="240" y="254">PROMPT · SOON · ROUTINE</text>
+  <text class="t" x="240" y="286">Screening index</text>
+  <text class="s" x="240" y="308">100 − capped deductions</text><text class="s" x="240" y="326">(decay ≤ 40, wear ≤ 3,</text><text class="s" x="240" y="342">restorations ≤ 5)</text>
+  <path class="arrow" d="M225,275 L185,275"/>
+  <rect class="box ice" x="10" y="200" width="170" height="150"/><text class="t" x="95" y="232" text-anchor="middle">Report</text>
+  <text class="s" x="95" y="256" text-anchor="middle">annotated photos,</text><text class="s" x="95" y="274" text-anchor="middle">plain-language summary,</text>
+  <text class="s" x="95" y="292" text-anchor="middle">what photos can't show,</text><text class="s" x="95" y="310" text-anchor="middle">PDF with QR code</text>
+  <text class="s" x="95" y="336" text-anchor="middle">→ OPG on Analyse</text>
+  <rect class="box warn" x="10" y="390" width="1156" height="150"/>
+  <text class="t" x="30" y="420">Measured on the AKU test split (628 smartphone photos, 95 % Wilson intervals)</text>
+  <text class="s" x="30" y="446">Photos with caries referred for a check-up or dentist: 90.7 % [86.2, 93.8] · caries-free photos referred anyway: 5.6 % [3.7, 8.3]</text>
+  <text class="s" x="30" y="468">Image-level sensitivity 92.0 % · specificity 92.9 % · caries model mAP@50 0.764 (published YOLOv8s baseline 0.841), classes merged AP@50 0.895</text>
+  <text class="s" x="30" y="490">Not validated on phone photos: wear, fillings, crowns. Photos cannot show decay between teeth, below the gum or in the bone.</text>
+  <text class="s" x="30" y="512">Optional AI notes (local Ollama qwen2.5vl, JSON) may only add gum/hygiene observations; the template summary is the fallback.</text>
+</svg>
+</figure>
+
+<!-- 4. Deployment -->
+<figure id="deployment">
+<h2>Deployment (Oracle Cloud Always Free)</h2>
+<p class="sub">Built on an arm64 Mac, shipped over SSH, served from one free ARM server. No charges as long as the account stays on Always Free.</p>
+<svg width="1176" height="470" viewBox="0 0 1176 470">
+  <rect class="box ice" x="10" y="40" width="330" height="300"/><text class="tag" x="30" y="66">DEVELOPER MAC (ARM64)</text>
+  <text class="t" x="30" y="94">git commit</text><text class="s" x="30" y="114">deploy only matches a commit</text>
+  <text class="t" x="30" y="148">docker build ×2</text><text class="s" x="30" y="168">toothai-ui (Detectron2 compiled once)</text>
+  <text class="s" x="30" y="186">toothai-photo-api (CPU torch)</text>
+  <text class="t" x="30" y="220">deploy/push.sh</text><text class="s" x="30" y="240">save images, split into 20 MB pieces,</text>
+  <text class="s" x="30" y="258">rsync each with retries (hotspot-safe),</text><text class="s" x="30" y="276">SHA-256 check on the server</text>
+  <text class="s" x="30" y="306">refuses metered networks unless allowed</text>
+  <path class="arrow" d="M340,190 L415,190"/><text class="s" x="352" y="164">SSH,</text><text class="s" x="352" y="180">key only</text>
+  <rect class="box" x="420" y="20" width="560" height="340"/><text class="tag" x="440" y="46">ORACLE VM · VM.Standard.A1.Flex · 2 OCPU · 12 GB · Ubuntu 24.04 aarch64</text>
+  <rect class="box navy" x="440" y="70" width="160" height="90"/><text class="t w" x="455" y="100">caddy</text>
+  <text class="s w" x="455" y="122">:80 / :443 only</text><text class="s w" x="455" y="140">automatic HTTPS</text>
+  <path class="arrow" d="M600,115 L640,115"/>
+  <rect class="box" x="645" y="70" width="150" height="90"/><text class="t" x="660" y="100">ui</text>
+  <text class="s" x="660" y="122">Streamlit :8501</text><text class="s" x="660" y="140">≤ 5 GB</text>
+  <path class="arrow" d="M795,115 L835,115"/>
+  <rect class="box" x="840" y="70" width="125" height="90"/><text class="t" x="855" y="100">photo-api</text>
+  <text class="s" x="855" y="122">:8001 internal</text><text class="s" x="855" y="140">≤ 4 GB</text>
+  <rect class="box" x="440" y="190" width="525" height="70"/><text class="t" x="455" y="218">/opt/toothai (read-only mounts)</text>
+  <text class="m" x="455" y="242">output/ (OPG Mask R-CNN) · weights/photo/ (YOLO)</text>
+  <text class="s" x="440" y="292">firewall: security list + iptables allow 22, 80, 443 · unattended security upgrades</text>
+  <text class="s" x="440" y="312">fail2ban · 4 GB swap · restart: unless-stopped · logs rotate 10 MB × 3</text>
+  <text class="s" x="440" y="332">health checks on both services; images tagged with the git commit</text>
+  <path class="arrow" d="M980,115 L1040,115"/>
+  <rect class="box ice" x="1045" y="70" width="121" height="90"/><text class="t" x="1060" y="100">Public</text>
+  <text class="s" x="1060" y="122">https://&lt;ip&gt;</text><text class="s" x="1060" y="140">.sslip.io</text>
+  <rect class="box warn" x="10" y="380" width="1156" height="72"/>
+  <text class="t" x="30" y="408">Cost guard</text>
+  <text class="s" x="30" y="432">Always Free only (never "Pay As You Go"), 1 USD budget alert. Weights travel over SSH, never in git or images. No uploads are stored.</text>
+</svg>
+</figure>
+
+<!-- 5. Evaluation method -->
+<figure id="evaluation">
+<h2>How the numbers were measured</h2>
+<p class="sub">Each data split has one job, so no design decision is tuned on the images it is reported on.</p>
+<svg width="1176" height="420" viewBox="0 0 1176 420">
+  <rect class="box" x="10" y="30" width="360" height="200"/><text class="tag" x="30" y="56">TRAIN · 5,584 OPGs</text>
+  <text class="t" x="30" y="84">Model training</text><text class="s" x="30" y="104">Mask R-CNN teeth and findings models</text>
+  <text class="t" x="30" y="138">Arch template</text><text class="s" x="30" y="158">tooth positions from 866 upper and</text>
+  <text class="s" x="30" y="176">887 lower jaws (canonical labels)</text>
+  <text class="m" x="30" y="210">learn_template.py</text>
+  <rect class="box" x="408" y="30" width="360" height="200"/><text class="tag" x="428" y="56">VALIDATION · 692 OPGs</text>
+  <text class="t" x="428" y="84">Design engine v2</text><text class="s" x="428" y="104">152 images with ≥ 14 labelled teeth;</text>
+  <text class="s" x="428" y="122">FDI on 109 canonical images</text><text class="s" x="428" y="146">every variant compared here first</text>
+  <text class="m" x="428" y="210">engine_lab.py --split valid</text>
+  <rect class="box spark" x="806" y="30" width="360" height="200"/><text class="tag w" x="826" y="56" style="fill:#fff">TEST · 716 OPGs (HELD OUT)</text>
+  <text class="t w" x="826" y="84">Report once</text><text class="s w" x="826" y="104">no image shared with training</text>
+  <text class="s w" x="826" y="122">recall: 93 full-arch images</text><text class="s w" x="826" y="140">FDI: 117 canonical images</text>
+  <text class="s w" x="826" y="158">(67 complete, 50 partial)</text>
+  <text class="m w" x="826" y="210" style="fill:#fff">paper_eval/results/*.csv</text>
+  <path class="arrow" d="M370,130 L403,130"/><path class="arrow" d="M768,130 L801,130"/>
+  <rect class="box ice" x="10" y="260" width="1156" height="140"/>
+  <text class="t" x="30" y="290">Rules that hold for every number</text>
+  <text class="s" x="30" y="316">• Matching: mask IoU ≥ 0.5, greedy by score. Recall only on fully labelled arches (most test images label only some teeth).</text>
+  <text class="s" x="30" y="338">• Uncertainty: 10,000-resample bootstrap over images (seed 20260921); comparisons are paired on the same images.</text>
+  <text class="s" x="30" y="360">• Canonical images: labels follow one consistent left-to-right numbering convention in each jaw (label_quality.py).</text>
+  <text class="s" x="30" y="382">• Photo screening: AKU official splits (choose on validation, report on test); DentalAI test split for the tooth model.</text>
+</svg>
+</figure>
+</body></html>

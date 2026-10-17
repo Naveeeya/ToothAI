@@ -97,4 +97,13 @@ def render():
             "Counting along the arch means one missing or undetected tooth shifts every number after it in "
             "that jaw. ToothAI flags partial arches on every case so the dentist knows where to look. See "
             "**Performance** for the measured effect.")
+        st.subheader("The improved engine (beta)")
+        st.markdown(
+            "Choose **Numbering → Improved** on the Analyse page. It runs one pass, removes duplicate boxes, "
+            "keeps at most 32 teeth before numbering and never drops a detected one, splits the jaws along a "
+            "fitted bite line, finds the dental midline from the symmetry of tooth widths and numbers each "
+            "tooth by **where it sits**: its distance from the midline, matched in order to an arch layout "
+            "learned from the training images. A missing tooth then leaves its slot empty instead of shifting "
+            "the rest. It was designed on the validation split and is compared with the published engine on "
+            "**Performance**.")
     ui.footer()
