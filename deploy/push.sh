@@ -50,17 +50,26 @@ if [[ "${2:-}" == "--weights" ]]; then
   sync --exclude '*.onnx' photo_screening/weights/ "ubuntu@$IP:/opt/toothai/weights/photo/"
 fi
 
-echo "== save images to a tar, send only what changed (rsync delta, compressed), load it on the VM"
-# Uncompressed, under a fixed name: unchanged image layers are byte-identical between builds, so rsync's
-# delta transfer sends little more than the changed code after the first deploy.
+echo "== save images, upload them in 20 MB pieces (each resumable), reassemble and verify on the VM"
+# Phone hotspots drop long uploads; small pieces each finish between drops, and rsync skips pieces that
+# are already there (same name and content), so an interrupted or repeated deploy resumes where it stopped.
 TMP="${TOOTHAI_DEPLOY_TMP:-.deploy}"
-mkdir -p "$TMP"
+mkdir -p "$TMP/parts"
 TAR="$TMP/toothai-images.tar"
 docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" -o "$TAR.tmp" && mv "$TAR.tmp" "$TAR"
-rm -f "$TMP"/toothai-*.tar.gz
-"${SSH[@]}" "mkdir -p /opt/toothai/images && rm -f /opt/toothai/images/*.tar.gz"
-sync -z "$TAR" "ubuntu@$IP:/opt/toothai/images/"
-"${SSH[@]}" "docker load -i /opt/toothai/images/toothai-images.tar"
+if [[ -n "${TOOTHAI_STOP_DOCKER:-}" ]]; then colima stop >/dev/null 2>&1 || true; fi   # free memory for the upload
+rm -f "$TMP"/toothai-*.tar.gz "$TMP"/parts/part-*
+split -b 20m "$TAR" "$TMP/parts/part-"
+SUM="$(shasum -a 256 "$TAR" | awk '{print $1}')"
+"${SSH[@]}" "mkdir -p /opt/toothai/images/parts && rm -f /opt/toothai/images/*.tar.gz /opt/toothai/images/toothai-images.tar"
+n=0; total=$(ls "$TMP"/parts/part-* | wc -l | tr -d ' ')
+for part in "$TMP"/parts/part-*; do
+  n=$((n + 1)); sync "$part" "ubuntu@$IP:/opt/toothai/images/parts/" || { echo "piece $n failed" >&2; exit 1; }
+  (( n % 10 == 0 )) && echo "   $n/$total pieces"
+done
+"${SSH[@]}" "cd /opt/toothai/images && ls parts/part-* | sort | xargs cat > toothai-images.tar \
+  && [ \"\$(sha256sum toothai-images.tar | cut -d' ' -f1)\" = $SUM ] && echo 'checksum ok' \
+  && docker load -i toothai-images.tar && rm -rf parts toothai-images.tar"
 echo "== start $VERSION at https://$SITE"
 scp "${SSH_OPTS[@]}" deploy/compose.yml deploy/Caddyfile "ubuntu@$IP:/opt/toothai/"
 "${SSH[@]}" "cd /opt/toothai && printf 'TOOTHAI_VERSION=%s\nSITE_ADDRESS=%s\n' '$VERSION' '$SITE' > .env \
