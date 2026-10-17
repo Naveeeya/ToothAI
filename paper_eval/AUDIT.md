@@ -1,4 +1,4 @@
-# Tooth-AI — code vs. paper audit
+# Tooth-AI: code vs. paper audit
 
 For co-authors and the supervisor. Every claim below is checked against the
 source with a file and line number. Where the paper and the code disagree, the
@@ -57,7 +57,7 @@ the 41-class cascade averages **13.99** over its 32 position classes.
 | paper name | directory | NUM_CLASSES (from weights) | iterations reached | final checkpoint |
 |---|---|---|---|---|
 | ResNet-50 9-class 20k | `resnet50_9class_20k` | 9 | 20,000 | yes |
-| ResNet-50 41-class 24k | `workspace/phase3/exp_41cls_24k` | — | — | **none**; `metrics.json` is 0 bytes |
+| ResNet-50 41-class 24k | `workspace/phase3/exp_41cls_24k` | - | - | **none**; `metrics.json` is 0 bytes |
 | ResNeXt-101 9-class 40k | `resnext101_9class_40k` | config says 9 | **1,545** (22.9 s/it) | **none** |
 | ResNeXt-101 Cascade "9-class" 60k | `resnext101_cascade_60k` | **41**, not 9 | 60,000 | yes |
 | ResNet-50 41-class 48k | `rtx4060_48k` | 41 | 47,999 | yes |
@@ -71,8 +71,8 @@ Its `metrics.json` has 2,401 lines and **none** carries a `segm/` or `bbox/`
 key; its log has zero `Evaluation results for segm` blocks. The run ends with
 Detectron2's `No evaluator found. Use DefaultTrainer.test(evaluators=)`.
 
-The comparison the paper needs — 41-class vs 9-class on the same ResNet-50
-backbone — has never been computed. The `16% mAP` in commit `c977f24` does not
+The comparison the paper needs (41-class vs 9-class on the same ResNet-50
+backbone) has never been computed. The `16% mAP` in commit `c977f24` does not
 come from this model's metrics. `paper_eval/run_eval.py --coco-eval` computes it.
 
 ---
@@ -86,7 +86,7 @@ come from this model's metrics. `paper_eval/run_eval.py --coco-eval` computes it
 | `data/final-di-remapped` | 5,584 / 692 / 716 | same images, 9-class labels |
 | `data/merged-9class` | 5,830 / 692 / 716 | remapped + 227 extra train images |
 
-Both the paper's claims are true — of different datasets. The 80/10/10 comes
+Both the paper's claims are true, but of different datasets. The 80/10/10 comes
 from `workspace/resplit_dataset_stratified.py` (seed 42). No separate split
 manifest is written; the three `_annotations.coco.json` image lists *are* the
 manifest.
@@ -113,12 +113,12 @@ same 692 images** (verified: intersection 692, sets equal).
 
 | the paper says | the code does |
 |---|---|
-| four passes (original, CLAHE, gamma, flip) | **two** — `app.py:405-423`, original + CLAHE only. `apply_gamma` (`:454`) and `flip_instances_horizontal` (`:475`) are defined and **called nowhere**. The docstring at `:392-395` says the 4-pass version was removed for producing "59 teeth instead of ~28-32". Not in git history either: `app.py` has one commit. |
+| four passes (original, CLAHE, gamma, flip) | **two**: `app.py:405-423`, original + CLAHE only. `apply_gamma` (`:454`) and `flip_instances_horizontal` (`:475`) are defined and **called nowhere**. The docstring at `:392-395` says the 4-pass version was removed for producing "59 teeth instead of ~28-32". Not in git history either: `app.py` has one commit. |
 | WBF at IoU 0.4 | **0.55** (`app.py:419`). Implementation at `:499`. It is not textbook WBF: single-pass detections take a 0.6 penalty (`:520`, `:620-627`) and the cluster score is `max`, not the weighted mean. The 0.4 is **DIoU-NMS on teeth** at `app.py:2314`, applied after thresholding. |
 | tooth threshold 0.03 central / 0.35 outside | `max(τ·0.7, 0.08)` inside vs `τ` outside (`app.py:960-965`), τ default **0.20** (`:2192`) → effective **0.14 / 0.20**. The 35–65% band itself is correct (`:922-923`). |
 | anomalies on a uniform 0.25 | slider default **0.15** (`:2197`); Crown/Implant/metal post get `max(τ·0.6, 0.10)` = 0.10 (`:973`). |
 | anomalies mapped to teeth by mask IoU | **bounding-box** IoU ≥ 0.15 (`app.py:190-208`). |
-| EfficientNet-B0 refines low-confidence ROIs | **not in the deployed path.** It exists as `workspace/tools/integrated_inference.py` (gate at `:233`) with a trainer at `workspace/classifier/train_effnet.py`. The weights are `workspace/tooth-ai/models/effnet_fdi_final.pth.placeholder` — **0 bytes**. `app.py` never imports it. |
+| EfficientNet-B0 refines low-confidence ROIs | **not in the deployed path.** It exists as `workspace/tools/integrated_inference.py` (gate at `:233`) with a trainer at `workspace/classifier/train_effnet.py`. The weights are `workspace/tooth-ai/models/effnet_fdi_final.pth.placeholder`: **0 bytes**. `app.py` never imports it. |
 | CLAHE clip 2.5, 8×8, L channel in LAB | correct (`app.py:411`, `:426-450`). |
 | `SCORE_THRESH_TEST` 0.05 at inference | correct (`app.py:375`, overriding the config's 0.3). |
 | WBF skip-box 0.05 | correct. |
@@ -136,7 +136,7 @@ then assigns `y < median_y` to the upper jaw and `y >= median_y` to the lower
 (`app.py:100-103`). The split is therefore forced to be even to within one
 tooth, regardless of the patient: upper receives the detections strictly above
 the median, lower receives the rest. Whenever the true number of upper and
-lower teeth differs — or the detector finds different numbers — teeth are
+lower teeth differs, or the detector finds different numbers, teeth are
 placed in the wrong jaw by construction, and no evidence about the actual jaw
 boundary is consulted. `run_eval.py` reports jaw-assignment accuracy separately
 on all 93 full-arch images so the size of this effect is visible.
@@ -146,7 +146,7 @@ on all 93 full-arch images so the size of this effect is visible.
 `sort_and_assign_fdi` (`app.py:108-170`) labels the leftmost detection in each
 jaw `18` (or `48`) unconditionally, then walks right. Its gap-detection check
 is guarded by `if i > 0` (`app.py:135`), so it runs only *between* consecutive
-teeth — never before the first one. A missing third molar, common in adults, shifts the entire jaw by
+teeth: never before the first one. A missing third molar, common in adults, shifts the entire jaw by
 one position. `results/position_offsets.csv` is the histogram of exactly this,
 computed on 112 images (67 full-arch canonical + 45 mid canonical-partial),
 which include partial arches where the shift can actually occur.
@@ -183,7 +183,7 @@ elif cls_id <= 32:  # 41-class model: IDs 0-32 are individual teeth
 
 For the 9-class model the class ids are `0=Tooth, 1=Caries, 2=Crown, 3=Filling,
 4=Implant, 5=Prefabricated metal post, 6=Retained root, 7=Root canal filling,
-8=Root canal obturation` — **every one of them ≤ 32**. The `elif` fires for all
+8=Root canal obturation`: **every one of them ≤ 32**. The `elif` fires for all
 eight anomaly classes.
 
 **This affects teeth, not only anomalies.** Every anomaly the primary model
@@ -194,7 +194,7 @@ jaw split, FDI assignment, recursive pruning and FDI conflict resolution. The
 hybrid model alone.
 
 **Measured, not inferred.** `run_eval.py --routing-ab` runs the teeth pipeline
-both ways on images sampled from the 380 that carry anomaly labels — the bug
+both ways on images sampled from the 380 that carry anomaly labels: the bug
 cannot fire where the 9-class model finds no anomaly, and all 93 full-arch
 images have zero anomaly annotations, so the question is unanswerable on them.
 On a Tesla T4, kernel v4:
@@ -209,7 +209,7 @@ On a Tesla T4, kernel v4:
 
 The teeth lists differ on **5 of 5** images. The surplus detections are the
 anomalies themselves: on image 288 the six phantom teeth carry scores 0.98,
-0.94, 0.99, 0.98, 0.74 and 0.34 — high-confidence fillings and crowns entering
+0.94, 0.99, 0.98, 0.74 and 0.34: high-confidence fillings and crowns entering
 the teeth list, being assigned FDI numbers, and being reported to the clinician
 as teeth. In the worst case the deployed system reports **2.5x** the teeth the
 corrected one does.
@@ -220,7 +220,7 @@ had. A mouth with many fillings is reported as having many more teeth than it
 does.
 
 Two cautions on reading that table. The corrected count is **not** validated by
-matching the GT count — these images label only 5–8 of the ~28–32 teeth
+matching the GT count: these images label only 5–8 of the ~28–32 teeth
 present, so a corrected count of 6 may equally reflect severe under-detection.
 The A/B establishes the bug's effect, not either version's correctness. And the
 sample is 5 images; the full-run `full_fix_routing` row is the number to quote.
@@ -233,7 +233,7 @@ paper reports the corrected numbers and discloses the bug.
 ### 5.4 There is no 1024×512 resize
 
 `app.py` never resizes. It relies on `DefaultPredictor`'s `ResizeShortestEdge`,
-driven by each config — and **the two deployed models differ**:
+driven by each config, and **the two deployed models differ**:
 
 | model | `MIN_SIZE_TEST` | `MAX_SIZE_TEST` |
 |---|---|---|
@@ -302,7 +302,7 @@ on both sides so neither gets a free pass on duplicates:
 |---|---|---|
 | detection + geometry (`single_pass`) | **64.5%** | **+20.03 pp** [+13.59, +26.21] |
 | detection + geometry (`full`) | 60.9% | +16.38 pp [+10.04, +22.70] |
-| network numbering (`resnext101_cascade_60k`, classes 1-32) | **44.5%** [41.1, 47.8] | — |
+| network numbering (`resnext101_cascade_60k`, classes 1-32) | **44.5%** [41.1, 47.8] | - |
 
 `single_pass` beats the network on **77 of 117** images, loses on 32, ties on
 8.
@@ -542,7 +542,7 @@ data, it is not present here and cannot be claimed from these results.
 
 Measured in `results/label_quality.csv` and `results/instance_counts.csv`.
 
-8,107 tooth instances over 716 images — mean 11.32, **median 8** per image,
+8,107 tooth instances over 716 images: mean 11.32, **median 8** per image,
 against ~28–32 teeth actually present. Annotation is not exhaustive.
 
 | quantity | value |
@@ -575,8 +575,8 @@ full-arch image, and therefore scored jaw accuracy on all 93. That claim was
 asserted, never checked by code, and it is wrong.
 
 `check_jaw_membership.py` splits each full-arch image's ground-truth boxes at
-the y-median of their own centres — the same rule `split_jaws` uses
-(`app.py:82-104`) — and asks which class ids land upper. No model is involved.
+the y-median of their own centres (the same rule `split_jaws` uses,
+`app.py:82-104`) and asks which class ids land upper. No model is involved.
 
 | subset | ground-truth label jaw matches geometry |
 |---|---|
@@ -585,7 +585,7 @@ the y-median of their own centres — the same rule `split_jaws` uses
 | all full-arch (n=93) | 2,626 / 2,976 = 88.2% |
 
 **25 of the 26** share a single alternative jaw partition whose upper set is
-`{1,2,3,4,5,6,7,8,12,23,27,28,29,30,31,32}` — overlapping the canonical upper
+`{1,2,3,4,5,6,7,8,12,23,27,28,29,30,31,32}`, overlapping the canonical upper
 set in only **9 of 16** classes. The 26th is canonical at the jaw level and
 scrambled only within jaws.
 
@@ -594,7 +594,7 @@ across 25 images, even though within-jaw ordering varies over 18 distinct
 orderings. Class→jaw is reliable on canonical images and on those alone.
 
 **What this invalidates.** The jaw accuracy of **87.2%** previously reported on
-93 images is not a model result — it is 99% on the images whose labels are
+93 images is not a model result: it is 99% on the images whose labels are
 right and 57% on the images whose labels put the tooth in the other jaw.
 Measured on the same detections:
 
@@ -602,8 +602,8 @@ Measured on the same detections:
 |---|---|
 | canonical (n=117) | **97.9%** [97.3, 98.5] |
 | canonical full-arch (n=67) | **98.96%** |
-| non-canonical full-arch (n=26) | 57.2% — label noise, not model error |
-| all full-arch (n=93) | 87.2% — **do not quote** |
+| non-canonical full-arch (n=26) | 57.2%: label noise, not model error |
+| all full-arch (n=93) | 87.2%: **do not quote** |
 
 The jaw figure to quote is **97.9% on 117 canonical images**. `ablation.csv`
 now carries both columns, the confounded one named as such.
@@ -628,8 +628,8 @@ why `n` is printed beside every FDI figure.
 
 Every FDI figure reported before this round was **joint**: the denominator was
 every ground-truth tooth, so a tooth the detector never found scored as a
-numbering error. That is the right headline number — a system that cannot find
-a tooth cannot number it — but it is the wrong number for a *design*
+numbering error. That is the right headline number (a system that cannot find
+a tooth cannot number it), but it is the wrong number for a *design*
 comparison, because the two sides use different detectors:
 
 | side | detector | numbering |
@@ -639,7 +639,7 @@ comparison, because the two sides use different detectors:
 
 `decompose.py` separates them on identical images with the identical matching
 rule (greedy, highest score first, mask IoU ≥ 0.5), reading `per_image.csv`
-only — no inference is re-run:
+only: no inference is re-run:
 
 ```
 detection recall          matched / all ground-truth teeth
@@ -671,7 +671,7 @@ them, it is not which jaw a tooth is placed in.
 **Detection is not where the configurations differ.** The spread in detection
 recall across all five is 1.0 pp; the spread in numbering given detection is
 5.3 pp. Whatever the ensemble costs, it costs it in the geometric assignment,
-not in finding teeth — consistent with §5.4, where the extra CLAHE detections
+not in finding teeth: consistent with §5.4, where the extra CLAHE detections
 disturb the left-to-right ordering that `sort_and_assign_fdi` depends on.
 
 **What this changes about `single_pass` vs `full`.** Paired, on the same 117
@@ -687,8 +687,8 @@ The joint interval excludes zero; the conditional one does not. Part of the
 joint delta was the detection advantage, and once that is removed this sample
 cannot separate the two on numbering alone. The `single_pass`-beats-`full`
 claim on FDI accuracy stays *suggestive*, and is now slightly weaker than the
-joint figure implied. It should be stated as a joint result — which is what it
-is — not as a claim about the numbering itself.
+joint figure implied. It should be stated as a joint result, which is what it
+is, not as a claim about the numbering itself.
 
 **Comparison accounting.** `paired_deltas.py --all-pairs` now computes **44**
 paired intervals: 8 metrics across 6 config pairs, anchored on `single_pass`.
@@ -703,23 +703,23 @@ report, with every interval and its win/loss/tie split, is written to
 **Denominators: 112 and 117 are different sets.** They have been used
 interchangeably in discussion and they are not the same:
 
-- **117** — every canonical-mapping image. The set the head-to-head numbering
+- **117**: every canonical-mapping image. The set the head-to-head numbering
   comparison ran on, and the FDI headline denominator.
-- **112** — those 117 minus the 5 canonical images that sit in the sparse
+- **112**: those 117 minus the 5 canonical images that sit in the sparse
   anomaly-annotation regime. This is the **position-offset** subset, chosen
   because an unlabelled position there is an unannotated tooth rather than an
   absent one.
 
 `decomposition.csv` reports both, plus the 93 full-arch images, so nothing
-depends on which one a reader assumes. The two barely differ — `single_pass`
-joint FDI is 64.5% on 117 and 64.9% on 112 — because the 5 extra images carry
+depends on which one a reader assumes. The two barely differ: `single_pass`
+joint FDI is 64.5% on 117 and 64.9% on 112, because the 5 extra images carry
 20 teeth between them.
 
 ### 6.1c Complete versus partial arches: the result reverses sign
 
 The geometric engine's FDI accuracy is not one number. Split the 117 canonical
-images into the 67 that are complete arches and the 50 that are not — the two
-partition the set exactly — and the deployed system behaves like two different
+images into the 67 that are complete arches and the 50 that are not (the two
+partition the set exactly), and the deployed system behaves like two different
 systems:
 
 | `single_pass` | complete (67) | partial (50) | difference |
@@ -736,7 +736,7 @@ unconditionally and its gap check never runs before the first tooth
 (`app.py:126-135`), so a single missing tooth shifts every FDI in that jaw. A
 complete arch has no gap to mis-anchor on.
 
-These deltas are an **unpaired two-group bootstrap** — the 67 and the 50 are
+These deltas are an **unpaired two-group bootstrap**: the 67 and the 50 are
 different radiographs, so there is no image to pair on and nothing cancels.
 They are wider than the paired config-vs-config intervals in
 `paired_deltas.txt` and are not comparable to them. `complete_vs_partial.csv`
@@ -753,7 +753,7 @@ The same contrast on `resnext101_cascade_60k`:
 | FDI \| detected | 59.8% | 60.3% | −0.46 pp [−8.55, +7.91] |
 
 Flat, with both intervals spanning zero. Direct numbering never learns an
-anchor, so a missing tooth costs it nothing structurally — exactly what the
+anchor, so a missing tooth costs it nothing structurally, exactly what the
 mechanism predicts, and a genuine out-of-sample confirmation of it rather than
 a restatement.
 
@@ -831,7 +831,7 @@ must never be averaged or quoted as a single figure. Therefore:
 - sparse-image recall is reported under the explicit name
   `recall_anomaly_bearing_teeth`, with its own `n`, and is excluded from
   central-zone and per-tooth recall entirely.
-- the position-offset histogram uses **112** images — 67 full-arch canonical
+- the position-offset histogram uses **112** images: 67 full-arch canonical
   plus 45 mid canonical-partial. Of the 50 canonical-partial images, 45 are mid
   (1,206 tooth instances, **zero** anomaly annotations) and 5 are sparse (20
   tooth instances, 3 of them carrying anomaly labels). The 5 are dropped: their
@@ -870,7 +870,7 @@ reported zero untracked files while `paper_eval/`, `.graphifyignore` and
 `ap_summary.json` all existed.
 
 It arrived in **`6b58c64`**, "Update gitignore and gitattributes for model
-weight exclusion" — the most recent commit. Repaired to UTF-8 during this audit.
+weight exclusion", the most recent commit. Repaired to UTF-8 during this audit.
 
 Note the resulting order: the repaired `**/model_final.pth` at line 66 sits
 *after* `!output/*/model_final.pth` at line 36, so it overrides that negation
@@ -886,7 +886,7 @@ on this repository.
 
 ### 7.3 The working tree is CRLF, HEAD is LF
 
-`git status` reports 459 files as modified with **zero content change** — the
+`git status` reports 459 files as modified with **zero content change**: the
 working tree has CRLF line endings, the committed blobs have LF, and
 `core.autocrlf` is unset. Not renormalised: teammates work on Windows and that
 is a team decision. Stage by explicit path until it is settled.

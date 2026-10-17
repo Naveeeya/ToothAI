@@ -178,7 +178,7 @@ def _teeth_frame(result, notation):
     return pd.DataFrame([{
         "Tooth": tooth_label(t["fdi"], notation),
         "Name": tooth_name(t["fdi"]),
-        "Findings": ", ".join(dict.fromkeys(f["type"] for f in t["findings"])) or "—",
+        "Findings": ", ".join(dict.fromkeys(f["type"] for f in t["findings"])) or "-",
         "Score": round(t["score"], 3),
         "Numbering": ("gap skip" if t["trace"].get("skipped") else
                       "conflict moved" if t["trace"].get("reassigned_from") else "in sequence"),
@@ -364,7 +364,7 @@ def render():
             (f"{len(result.teeth)}<small> / 32</small>", "Teeth detected"),
             (f"{len(result.findings)}", "Findings"),
             (f"{upper}<small>/</small>{lower}", "Upper / lower jaw"),
-            (f"{result.total_seconds:.1f}<small> s</small>" if result.source == "model" else "—",
+            (f"{result.total_seconds:.1f}<small> s</small>" if result.source == "model" else "-",
              "Analysis time"),
         ])
         if result.teeth:

@@ -8,7 +8,7 @@ FULL_TITLE = (
     "Segmentation, Numbering and Anatomical Mapping of Teeth in Panoramic Dental Radiographs"
 )
 TAGLINE = "AI that reads dental radiographs, so clinicians catch more and miss less."  # Brand Guidelines v1.0
-DESCRIPTOR = "Detection · Segmentation · Numbering · Anatomical mapping — for panoramic radiographs"
+DESCRIPTOR = "Detection · Segmentation · Numbering · Anatomical mapping for panoramic radiographs"
 DISCLAIMER = (
     "Research prototype. Not a medical device and not for diagnostic use. "
     "All findings require review by a qualified dentist."

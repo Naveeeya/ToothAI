@@ -103,3 +103,6 @@ paper_eval/.cache/
 
 # deploy/push.sh image archives
 .deploy/
+
+# presentation media built by tools/report_media (screenshots, PDFs)
+/report_media/

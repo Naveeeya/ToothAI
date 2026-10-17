@@ -1,4 +1,4 @@
-# Tooth-AI — product overview
+# Tooth-AI: product overview
 
 **Tooth-AI: Integrated Deep Learning and Geometric Reasoning System for Detection, Segmentation,
 Numbering and Anatomical Mapping of Teeth in Panoramic Dental Radiographs.**

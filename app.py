@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ToothAI — Streamlit entry point.
+"""ToothAI: Streamlit entry point.
 
     streamlit run app.py                 # full mode (torch + detectron2 + weights in output/)
     TOOTH_AI_DEMO=1 streamlit run app.py # demo mode: bundled sample cases, no Detectron2
@@ -20,7 +20,7 @@ st.set_page_config(
     page_icon=str(theme.BRAND / "favicon-32.png"),
     layout="wide",
     initial_sidebar_state="auto",  # expanded on desktop, collapsed on phones
-    menu_items={"About": "ToothAI — research prototype. Not for diagnostic use."},
+    menu_items={"About": "ToothAI: research prototype. Not for diagnostic use."},
 )
 st.logo(str(theme.BRAND / "tooth-ai-lockup-horizontal.svg"), size="large",
         icon_image=str(theme.BRAND / "tooth-ai-mark.svg"))

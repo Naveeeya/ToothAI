@@ -12,7 +12,7 @@ python3 paper_eval/check_imports.py
 The GPU half cannot be imported on this Mac (no torch, Detectron2, cv2 or
 numpy), so a missing module-level import is invisible locally and only shows
 up minutes into a paid GPU session. This walks the AST instead. It is how the
-`cv2` import missing from `pipeline.py` was found — after it had already cost
+`cv2` import missing from `pipeline.py` was found, after it had already cost
 one Kaggle run.
 
 ## 1. Build the bundles (on the Mac)
@@ -32,7 +32,7 @@ python3 paper_eval/kaggle/make_bundle.py               # the big one, once
 python3 paper_eval/kaggle/make_bundle.py --code-only   # the small one
 ```
 
-Produces `paper_eval/kaggle/bundle/` — about **1.7 GB**, 735 files:
+Produces `paper_eval/kaggle/bundle/`: about **1.7 GB**, 735 files:
 
 | group | contents |
 |---|---|
@@ -42,7 +42,7 @@ Produces `paper_eval/kaggle/bundle/` — about **1.7 GB**, 735 files:
 
 No training data is included.
 
-## 2. Create the Kaggle Dataset — **private**
+## 2. Create the Kaggle Dataset (**private**)
 
 ```bash
 # big dataset, once
@@ -63,7 +63,7 @@ kaggle datasets version -p paper_eval/kaggle/bundle_code --dir-mode zip -t -m "w
 CSV, which would rewrite the COCO annotation JSON and the result CSVs. They
 must stay byte-exact.
 
-Privacy is the **default** for `datasets create` in CLI 2.2.x — `--public` is
+Privacy is the **default** for `datasets create` in CLI 2.2.x: `--public` is
 opt-in. Do not pass it. `dataset-metadata.json` also sets `"isPrivate": true`
 and `make_bundle.py` asserts it.
 
@@ -101,7 +101,7 @@ outside the project.
 }
 ```
 
-`enable_internet` is required — Detectron2 is built from source at run time.
+`enable_internet` is required: Detectron2 is built from source at run time.
 
 The kernel `id` must **not** equal a dataset slug in the same namespace, or
 `SaveKernel` returns `409 Conflict`. Hence `tooth-ai-paper-eval-run`.
@@ -124,7 +124,7 @@ kaggle kernels output <username>/tooth-ai-paper-eval -p paper_eval/results
    Detectron2 at commit `fd27788985af0f4ca800bca563acdb700bb890e2`. Each falls
    back only on failure, and every fallback is collected into `DEVIATIONS` and
    printed in a banner. If that banner appears, record it in the paper's
-   reproducibility note — numbers may differ slightly.
+   reproducibility note: numbers may differ slightly.
 3. **Smoke test** (`--smoke-test`, 5 images). Confirm the summary table is
    populated before committing to the full run.
 4. Full run, sweep, COCO eval, panel candidates, zip.
@@ -139,7 +139,7 @@ kaggle kernels output <username>/tooth-ai-paper-eval -p paper_eval/results
 | `--coco-eval` | 716 × 3 models | ~20–30 min |
 | `--suggest-images` | 67 × 2 configs | ~5 min |
 
-These are estimates from image count and model size, not measurements — the
+These are estimates from image count and model size, not measurements: the
 first real run replaces them.
 
 ## 6. Bringing results back

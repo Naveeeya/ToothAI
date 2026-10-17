@@ -1,4 +1,4 @@
-# ToothAI — brand and UX specification
+# ToothAI: brand and UX specification
 
 Source of truth for the product's look, voice and interaction design. Implementation
 lives in `tooth_ai/ui/` (tokens, CSS, components) and `assets/brand/` (marks, usage guide).
@@ -14,7 +14,7 @@ Researched October 2026.
 
 | Product | Company | Panoramic capability | Regulatory | Brand colour |
 |---|---|---|---|---|
-| Overjet | Overjet Inc. (Boston) | caries, calculus, bone level, PARL — bitewing/PA focus | 11 FDA 510(k) | deep violet `#3D2276` |
+| Overjet | Overjet Inc. (Boston) | caries, calculus, bone level, PARL: bitewing/PA focus | 11 FDA 510(k) | deep violet `#3D2276` |
 | Second Opinion | Pearl (LA) | up to 18 findings; panoramic clearance Dec 2025 | FDA, EU MDR | cyan `#23BFEE` on pastels |
 | Videa AI | VideaHealth | 30+ conditions incl. panoramic | FDA K251002 | chartreuse `#DFDA02` |
 | Diagnocat | DGNCT | OPG/IOPA/CBCT, 65+ conditions, colour dental chart | EU MDR; FDA (CBCT PAL) | violet `#5241CC` + red |
@@ -46,12 +46,12 @@ leaderboard), Tufts Dental Database (1,000 OPGs with eye-tracking), ToothFairy (
 No competitor explains **why** a tooth got its number. Tooth-AI's numbering is geometric,
 so it can show its reasoning:
 
-1. **"Why this number?"** per tooth — jaw (above/below the split line), rank along the arch,
+1. **"Why this number?"** per tooth: jaw (above/below the split line), rank along the arch,
    gap skips, conflict reassignments.
-2. **Geometry layer** — jaw split line, midline, fitted arch curves, quadrant colouring.
+2. **Geometry layer**: jaw split line, midline, fitted arch curves, quadrant colouring.
 3. **Numbering reliability flag** per case, driven by arch completeness (the measured
    failure mode: 77 % FDI on complete arches vs 35 % on partial ones, as deployed).
-4. **Honest performance page** — measured numbers with n and 95 % CIs.
+4. **Honest performance page**: measured numbers with n and 95 % CIs.
 5. **FDI by default**, built for Indian dental colleges and clinics.
 
 ### Territory to avoid
@@ -60,7 +60,7 @@ so it can show its reasoning:
   dentalXrai), mint (Denti.AI), chartreuse (Videa), orange (Velmeni).
 - Type: Inter, DM Sans, Space Grotesk, Plus Jakarta Sans.
 - Mascots and playful patient copy.
-- Red, yellow and purple are reserved for chart status meanings — never brand colours.
+- Red, yellow and purple are reserved for chart status meanings: never brand colours.
 - Name risk: "Tooth-AI" sits close to "Toothsi" (Indian aligner brand). Fine for academic
   use; run a trademark search before any commercial launch.
 
@@ -73,12 +73,12 @@ so it can show its reasoning:
 | Name | **Tooth-AI** |
 | Full title | Tooth-AI: Integrated Deep Learning and Geometric Reasoning System for Detection, Segmentation, Numbering and Anatomical Mapping of Teeth in Panoramic Dental Radiographs |
 | Tagline | **Every tooth, found and explained.** |
-| Descriptor | Detection · Segmentation · Numbering · Anatomical mapping — for panoramic radiographs |
+| Descriptor | Detection · Segmentation · Numbering · Anatomical mapping for panoramic radiographs |
 | Voice | evidence-led, calm, clinical; sentence case; no emoji; never overclaim |
 
 The full title appears on About, How it works, the PDF methodology section and the paper.
 
-### Logo — "Arch Nodes" (primary)
+### Logo: "Arch Nodes" (primary)
 
 Deep learning finds the teeth (nodes); geometry connects and orders them (the curve).
 
@@ -92,7 +92,7 @@ Alternate "Quadrant Tooth": a molar silhouette crossed by a thin FDI crosshair, 
 quadrant saffron. Both are rendered in `assets/brand/logo-explorations.html`.
 
 Wordmark: IBM Plex Sans SemiBold, tracking −1 %, hyphen in saffron.
-UI motif: detection-style corner brackets mark selection and focus — never the logo.
+UI motif: detection-style corner brackets mark selection and focus: never the logo.
 
 ### Colour tokens
 
@@ -130,7 +130,7 @@ TTFs in `static/fonts/` for the app and the PDF (Brand Guidelines v1.0).
 
 ### Partner logos
 
-AICTE, Bharati Vidyapeeth, C-CAMP, CIBIP — once per surface (About page, Analyze footer,
+AICTE, Bharati Vidyapeeth, C-CAMP, CIBIP: once per surface (About page, Analyze footer,
 PDF page-1 footer), equal height on white chips, original colours, never recoloured or
 cropped. Caption: *Developed under the C-CAMP Inter-Institutional Biomedical Innovations
 Programme (AICTE–C-CAMP IBIP).*
@@ -138,7 +138,7 @@ Programme (AICTE–C-CAMP IBIP).*
 ### Copy rules
 
 - "Findings", not "anomalies". Modes: **Full chart** (teeth + findings), **Findings only**.
-- "Caries (near metal, penalized)" → "Caries" + flag "Near metal — lower confidence".
+- "Caries (near metal, penalized)" → "Caries" + flag "Near metal: lower confidence".
 - "Confidence" → "Mean detection score", in detail views only.
 - Disclaimer on every surface: *Research prototype. Not a medical device and not for
   diagnostic use. All findings require review by a qualified dentist.*
@@ -168,20 +168,20 @@ Header badge: "Research prototype".
 
 States:
 
-- **Empty** — hero with mark, "Upload a panoramic radiograph (OPG)", formats, samples,
+- **Empty**: hero with mark, "Upload a panoramic radiograph (OPG)", formats, samples,
   three-step strip (Detect → Number → Map), privacy note.
-- **Loading** — `st.status` lists each stage, collapses to "Done in 0.6 s".
-- **Model missing** — setup card listing expected weight paths; never a half page.
-- **Error** — friendly message, traceback in an expander.
-- **Not an OPG** — warning when aspect ratio < 1.6; analysis still allowed.
+- **Loading**: `st.status` lists each stage, collapses to "Done in 0.6 s".
+- **Model missing**: setup card listing expected weight paths; never a half page.
+- **Error**: friendly message, traceback in an expander.
+- **Not an OPG**: warning when aspect ratio < 1.6; analysis still allowed.
 
 Reliability banner:
 
 | State | Rule | Copy |
 |---|---|---|
-| ok | both jaws ≥ 14 teeth, no gap skip, no conflict reassignment | Complete arches — numbering reliable |
-| caution | a jaw ≤ 13 teeth, or a gap skip fired | Partial arch (lower jaw) — numbers may be shifted; review |
-| alert | < 10 teeth in total | Low tooth count — check image quality |
+| ok | both jaws ≥ 14 teeth, no gap skip, no conflict reassignment | Complete arches: numbering reliable |
+| caution | a jaw ≤ 13 teeth, or a gap skip fired | Partial arch (lower jaw): numbers may be shifted; review |
+| alert | < 10 teeth in total | Low tooth count: check image quality |
 
 Interactions: display controls never re-run inference (results cached in session state by
 image hash + mode + thresholds). Selecting a tooth (viewer click or table row) syncs the
@@ -211,9 +211,9 @@ Full title, tagline, institutions, partner strip, team, dataset attribution
 
 A4, Plus Jakarta Sans and JetBrains Mono embedded.
 
-- **Page 1** — ink-900 header band (white lockup, "Panoramic radiograph report"); case meta
+- **Page 1**: ink-900 header band (white lockup, "Panoramic radiograph report"); case meta
   grid; reliability statement; annotated OPG at full width, aspect preserved; legend;
   odontogram; partner strip in the footer.
-- **Page 2** — per-tooth table; unassigned findings; methodology (full title + summary);
+- **Page 2**: per-tooth table; unassigned findings; methodology (full title + summary);
   limitations; disclaimer.
-- **Every page** — "Tooth-AI · Research prototype — not for diagnostic use · Page n of m".
+- **Every page**: "Tooth-AI · Research prototype. Not for diagnostic use · Page n of m".

@@ -25,7 +25,7 @@ training code.
 | `export_panels.py` | torch, Detectron2, cv2 | Kaggle |
 
 This Mac is an Apple M1: no CUDA, no torch, no Detectron2. The GPU half runs on
-Kaggle — see [`kaggle/README.md`](kaggle/README.md).
+Kaggle: see [`kaggle/README.md`](kaggle/README.md).
 
 ## Commands, in order
 
@@ -41,7 +41,7 @@ python3 paper_eval/kaggle/make_bundle.py
 
 Runtime: under 30 s total, except `make_bundle.py` (~2 min, copies 1.7 GB).
 
-`compare_ap.py` exits **2** when the comparison is invalid — it currently does,
+`compare_ap.py` exits **2** when the comparison is invalid, and it currently does,
 because `rtx4060_48k` was never evaluated.
 
 ### On Kaggle
@@ -59,15 +59,15 @@ python3 paper_eval/export_panels.py --image-id <id>
 `--smoke-test` only shrinks the workload to 5 images; it does **not** select
 configurations. Pass `--all` or `--config <name>` for that.
 
-Stages write their CSVs as they complete — `ablation.csv` after every config,
-`coco_eval_716.csv` after every model — and the ablation runs first, so a
+Stages write their CSVs as they complete (`ablation.csv` after every config,
+`coco_eval_716.csv` after every model), and the ablation runs first, so a
 session that dies part-way still leaves finished work on disk.
 
 Measured per-image latency from the smoke run on one pinned Tesla T4:
 `single_pass` 0.23 s, the two-pass configs 0.57–0.61 s. A first projection of
 the whole run at those rates came to ~9.5 h, close enough to Kaggle's cap to
 matter; caching decoded ground-truth masks across taus and screening mask IoU
-on bounding boxes first brought it down. Both are exact — a mask lies inside
+on bounding boxes first brought it down. Both are exact: a mask lies inside
 its own box, so disjoint boxes imply zero mask IoU and no match changes.
 
 ### Engine v2 (on the Mac, CPU, from cached model outputs)
@@ -144,7 +144,7 @@ verbatim. `full_fix_routing` is the same system with that bug corrected.
 
 It is a row rather than a whole-run flag because both numbers belong in the
 paper. The bug routes anomaly detections into the teeth list, so on the 491
-sparse images — which are precisely the ones carrying anomaly labels — the
+sparse images, which are precisely the ones carrying anomaly labels, the
 deployed rows' `recall_anomaly_bearing_teeth` and pre-prune tooth counts are
 contaminated by phantom teeth. Measured on 5 anomaly-bearing images, the two
 disagree on all 5, by up to 2.5x in reported tooth count (see AUDIT.md 5.3).

@@ -129,7 +129,7 @@ def _results(rep: dict, api_ok: bool) -> None:
     _banner(level, title, rep["triage"]["reasons"])
     idx = rep["screening_index"]
     ui.kpi_row([
-        (f"{idx if idx is not None else '—'}<small>/100</small>", f"Screening index · {rep['index_band'].lower()}"),
+        (f"{idx if idx is not None else '-'}<small>/100</small>", f"Screening index · {rep['index_band'].lower()}"),
         (f"{len(analysed)}<small>/{len(rep['images'])}</small>", "Photos analysed"),
         (f"{len(strong)}", "Findings to review"),
         (f"{len(findings) - len(strong)}", "Low-confidence marks"),
@@ -179,8 +179,8 @@ def _about(models_payload) -> None:
         for m in models_payload["models"]:
             metrics = m.get("metrics") or {}
             measured = ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in metrics.items() if k != "source")
-            rows.append({"Model": m["model_id"], "Status": m["status"], "Version": m.get("version") or "—",
-                         "Measured": (f"{measured} ({metrics['source']})" if metrics else "—"),
+            rows.append({"Model": m["model_id"], "Status": m["status"], "Version": m.get("version") or "-",
+                         "Measured": (f"{measured} ({metrics['source']})" if metrics else "-"),
                          "Licence": m["licence"]})
         st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
         for m in models_payload["models"]:

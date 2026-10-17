@@ -346,7 +346,7 @@ if __name__ == "__main__":
     print(f"  Corrected FDI: {sorted(fdi_corrected)}")
     assert 36 in fdi_corrected and 37 in fdi_corrected and 38 in fdi_corrected, "Expected spatial reassignment to 36, 37, 38"
     print(f"  Confidence: {confidence:.2f}")
-    print("  ✅ PASSED (duplicates resolved)")
+    print("  PASSED (duplicates resolved)")
     
     # Test 2: Quadrant Count Validation
     print("\n[TEST 2] Quadrant Count Validation")
@@ -360,7 +360,7 @@ if __name__ == "__main__":
     print(f"  Input: 10 teeth in Quadrant 1 (expected max 8)")
     print(f"  Warnings: {[w for w in warnings if 'Quadrant 1' in w]}")
     assert any("Quadrant 1" in w and "WARNING" in w for w in warnings), "Expected warning about Q1 overcount"
-    print("  ✅ PASSED (overcount detected)")
+    print("  PASSED (overcount detected)")
     
     # Test 3: Spatial Coherence Scoring
     print("\n[TEST 3] Spatial Coherence Scoring")
@@ -387,7 +387,7 @@ if __name__ == "__main__":
     coherence_scrambled = FDIValidator._check_spatial_coherence(scrambled_teeth)
     print(f"  Scrambled order (15→18→16→17): Coherence = {coherence_scrambled:.2f}")
     assert coherence_scrambled < 0.50, f"Expected coherence <0.50, got {coherence_scrambled}"
-    print("  ✅ PASSED (spatial coherence scoring works)")
+    print("  PASSED (spatial coherence scoring works)")
     
     # Test 4: Confidence Calculation
     print("\n[TEST 4] Confidence Calculation")
@@ -410,10 +410,10 @@ if __name__ == "__main__":
     _, warnings_low, conf_low = FDIValidator.validate_and_correct(low_conf_teeth)
     print(f"  Low confidence scenario (3 duplicates): Confidence = {conf_low:.2f}")
     assert conf_low < 0.70, f"Expected confidence <0.70, got {conf_low}"
-    print("  ✅ PASSED (confidence scoring differentiates quality)")
+    print("  PASSED (confidence scoring differentiates quality)")
     
     print("\n" + "="*70)
-    print("ALL TESTS PASSED ✅")
+    print("ALL TESTS PASSED ")
     print("Module ready for production deployment")
     print("="*70)
     
@@ -434,10 +434,10 @@ all_teeth, fdi_warnings, fdi_confidence = FDIValidator.validate_and_correct(all_
 
 # Display warnings to user
 if fdi_confidence < 0.70:
-    st.error("⚠️ LOW CONFIDENCE: FDI numbering may be incorrect - Manual review required")
+    st.error("LOW CONFIDENCE: FDI numbering may be incorrect - Manual review required")
 
 if fdi_confidence < 0.50:
-    st.error("🚫 CRITICAL: FDI confidence too low - Report generation blocked")
+    st.error("CRITICAL: FDI confidence too low - Report generation blocked")
     st.stop()
 
 for warning in fdi_warnings:

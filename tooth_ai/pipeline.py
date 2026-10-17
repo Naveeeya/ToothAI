@@ -4,14 +4,14 @@ Moved out of the single-file app (``git show paper-eval-v1:app.py``). Function b
 copied verbatim from that file -- each section header names its source -- with three
 deliberate changes, each marked ``# CHANGED:`` in the code:
 
-1. ``process_predictions`` — class routing. The old ``elif cls_id <= 32`` branch also
+1. ``process_predictions``: class routing. The old ``elif cls_id <= 32`` branch also
    matched the 9-class model's finding ids 1-8, so caries, crowns and fillings were
    numbered as teeth. Behaviour now equals ``paper_eval.pipeline`` with
    ``fix_cls_routing=True``.
-2. ``sort_and_assign_fdi`` / ``resolve_fdi_conflicts`` — attach a ``trace`` dict to each
+2. ``sort_and_assign_fdi`` / ``resolve_fdi_conflicts``: attach a ``trace`` dict to each
    tooth (jaw, rank, gap skips, reassignment) so the UI can explain every number.
    The numbers themselves are unchanged.
-3. ``suppress_metal_artifacts`` — keeps the finding type as "Caries" and sets
+3. ``suppress_metal_artifacts``: keeps the finding type as "Caries" and sets
    ``near_metal=True`` instead of renaming it "Caries (near metal, penalized)".
    Scores are penalised exactly as before.
 
@@ -640,7 +640,7 @@ def resolve_fdi_conflicts(teeth):
     # Step 2: Process each FDI group
     for fdi, group in fdi_groups.items():
         if len(group) == 1:
-            # No conflict — keep as-is
+            # No conflict: keep as-is
             resolved.append(group[0])
             occupied_fdis.add(fdi)
         else:
@@ -667,7 +667,7 @@ def resolve_fdi_conflicts(teeth):
                     loser['quadrant'] = nearest // 10
                     resolved.append(loser)
                     occupied_fdis.add(nearest)
-                # else: discard — no valid slot available (anatomically impossible)
+                # else: discard (no valid slot available, anatomically impossible)
     
     return resolved
 
@@ -751,7 +751,7 @@ def suppress_metal_artifacts(teeth, anomalies, proximity_px=5, penalty=0.5):
 
 def recursive_prune_teeth(teeth, max_teeth=32, step=0.02, max_threshold=0.90):
     """
-    Subsystem 5: Anatomical Count Check — Recursive Pruning
+    Subsystem 5: Anatomical Count Check (Recursive Pruning)
     
     If the teeth count exceeds the anatomical maximum (32 for adults),
     incrementally raise the confidence floor and remove the lowest-scoring
@@ -807,7 +807,7 @@ def validate_anatomy(teeth, anomalies, anomaly_threshold=0.15):
         anomaly_threshold: Minimum score for anomalies after penalties
     
     Returns:
-        (validated_teeth, validated_anomalies) — anatomically plausible results
+        (validated_teeth, validated_anomalies): anatomically plausible results
     """
     # Step 1: Enforce maximum tooth count (32 for adult dentition)
     teeth = recursive_prune_teeth(teeth, max_teeth=32)

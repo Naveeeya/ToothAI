@@ -53,8 +53,8 @@ def to_markdown(result, case_id="", created=None, notation="FDI"):
     d = to_dict(result, case_id, created)
     num = (lambda t: t["universal"]) if notation == "Universal" else (lambda t: t["fdi"])
     lines = [
-        f"# {tooth_ai.PRODUCT_NAME} — panoramic radiograph report", "",
-        f"- Case: {case_id or '—'}",
+        f"# {tooth_ai.PRODUCT_NAME}: panoramic radiograph report", "",
+        f"- Case: {case_id or '-'}",
         f"- Date: {d['created'].replace('T', ' ')}",
         f"- Mode: {result.mode}",
         f"- Notation: {notation}",
@@ -73,7 +73,7 @@ def to_markdown(result, case_id="", created=None, notation="FDI"):
                       "|---|---|---|---|"]
             for t in rows:
                 f = ", ".join(x["type"] + (" (near metal)" if x["near_metal"] else "")
-                              for x in t["findings"]) or "—"
+                              for x in t["findings"]) or "-"
                 lines.append(f"| {num(t)} | {t['name']} | {f} | {t['score']:.2f} |")
             lines.append("")
     if d["unassigned_findings"]:

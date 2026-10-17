@@ -93,7 +93,7 @@ def geometry_vs_network():
 
 
 def pct(v, digits=1):
-    return "—" if v is None else f"{v * 100:.{digits}f}%"
+    return "-" if v is None else f"{v * 100:.{digits}f}%"
 
 
 def deployed_summary():

@@ -1,4 +1,4 @@
-/* ToothAI — the few rules config.toml can't express. Class names only; no Streamlit
+/* ToothAI: the few rules config.toml can't express. Class names only; no Streamlit
    test-ids, no !important, and the header stays visible (it holds the sidebar toggle). */
 
 .block-container { padding-top: 4.5rem; padding-bottom: 3rem; max-width: 1480px; }  /* clears the top nav bar */

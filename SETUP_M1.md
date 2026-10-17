@@ -55,5 +55,5 @@ python workspace/train_net.py \
 ✓ WandB logged in
 ✓ Dataset: 6,992 images
 ✓ Config: 41 classes
-🎉 All checks passed!
+All checks passed!
 ```

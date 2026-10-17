@@ -1,4 +1,4 @@
-# Tooth-AI — context for Claude Code
+# Tooth-AI: context for Claude Code
 
 **Tooth-AI: Integrated Deep Learning and Geometric Reasoning System for Detection,
 Segmentation, Numbering and Anatomical Mapping of Teeth in Panoramic Dental Radiographs.**
@@ -57,7 +57,7 @@ prosthetic), a dental chart and a PDF report.
 Models: teeth `output/resnet50_9class_20k` (9 classes: Tooth + 8 findings);
 findings `output/rtx4060_48k` (41 classes: ids 0–32 tooth, 33–40 findings).
 
-Data shapes — tooth `{box, fdi, score, quadrant, mask, findings[], trace}`,
+Data shapes: tooth `{box, fdi, score, quadrant, mask, findings[], trace}`,
 finding `{type, score, box, mask}`.
 
 ## Numbers we are allowed to show
@@ -67,14 +67,14 @@ bootstrap 95 % CIs; see `paper_eval/AUDIT.md`, `paper_eval/results/*.csv`). **Al
 configuration a number comes from.** In code, read them through `tooth_ai/evidence.py` (it parses
 the CSVs) instead of hard-coding.
 
-As deployed (`full_fix_routing`: two passes + routing fix — what the app runs):
+As deployed (`full_fix_routing`, two passes + routing fix; this is what the app runs):
 - Tooth detection recall **94.9 % [94.0, 95.8]** (n = 117); jaw given detected **97.9 %**.
-- FDI end-to-end **61.6 %** — complete arches **76.6 % [70.7, 82.2]** (n = 67), partial arches
+- FDI end-to-end **61.6 %**: complete arches **76.6 % [70.7, 82.2]** (n = 67), partial arches
   **35.4 % [27.7, 42.8]** (n = 50). The partial-arch collapse is the headline limitation: one
   missing tooth shifts every number in that jaw.
 
 Best measured (`single_pass`): recall **95.3 %**, FDI **64.5 % [58.7, 70.1]**, complete 81.0 %,
-partial 35.6 %. Single pass beats two passes (+3.65 pp FDI, paired) — a candidate change.
+partial 35.6 %. Single pass beats two passes (+3.65 pp FDI, paired): a candidate change.
 
 - Geometry (single pass) vs a direct-numbering 41-class network: **+18.2 pp [+11.8, +24.3]**
   paired (64.5 % vs 46.3 %); most of the gap is detection, not numbering.
@@ -96,7 +96,7 @@ device and not for diagnostic use. All findings require review by a qualified de
 ## Rules
 
 - **paper_eval line references** (`app.py:NNN`) resolve against git tag `paper-eval-v1`.
-  `paper_eval/pipeline.py` is a verbatim copy of the old pure functions — don't edit it to
+  `paper_eval/pipeline.py` is a verbatim copy of the old pure functions: don't edit it to
   match new code. `tests/test_engine_parity.py` keeps `tooth_ai/pipeline.py` honest.
 - **Bugs fixed in the redesign** (behaviour differs from `paper-eval-v1` on purpose):
   9-class finding ids 1–8 were routed into teeth (`cls_id <= 32` branch now applies only to
@@ -120,12 +120,12 @@ python3 -m pytest tests/                     # unit tests (no GPU)
 
 The Windows venv in `venv/` (Python 3.10, Streamlit 1.52.2, detectron2 0.6,
 torch 2.5.1+cu121) is the full-mode environment. On the Mac (M1, no CUDA) use demo mode with
-`.venv/` (Python 3.10, `requirements-app.txt`). Run from the repo root — model paths are relative.
+`.venv/` (Python 3.10, `requirements-app.txt`). Run from the repo root: model paths are relative.
 
 Notes for working on the UI:
 - The repo lives on an external volume the desktop preview runner can't read: start Streamlit
   from the shell (as above) and attach the browser pane to `http://localhost:8501`
-  (`.claude/launch.json`). Restart the server after editing `tooth_ai/` modules or CSS — imported
+  (`.claude/launch.json`). Restart the server after editing `tooth_ai/` modules or CSS: imported
   modules and the CSS are cached per process.
 - `st.html` strips inline `<svg>`: use `components.svg_image()` (data-URI `<img>`).
 - The viewer uses Plotly `dragmode="zoom"`: in pan mode plotly.js never emits `plotly_selected`,
