@@ -35,7 +35,7 @@ docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERS
 sync() {
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    rsync -a --partial --timeout=120 --exclude '._*' -e "ssh ${SSH_OPTS[*]}" "$@" && return 0
+    rsync -a --chmod=D755,F644 --partial --timeout=120 --exclude '._*' -e "ssh ${SSH_OPTS[*]}" "$@" && return 0
     echo "   transfer interrupted, retrying ($i)"; sleep 10
   done
   return 1
