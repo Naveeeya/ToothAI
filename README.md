@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/alphaleporus/tooth-ai/actions/workflows/ci.yml"><img alt="ToothAI app CI" src="https://github.com/alphaleporus/tooth-ai/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/alphaleporus/tooth-ai/actions/workflows/photo-screening.yml"><img alt="Photo screening CI" src="https://github.com/alphaleporus/tooth-ai/actions/workflows/photo-screening.yml/badge.svg"></a>
+  <a href="https://github.com/alphaleporus/ToothAI/actions/workflows/ci.yml"><img alt="ToothAI app CI" src="https://github.com/alphaleporus/ToothAI/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/alphaleporus/ToothAI/actions/workflows/photo-screening.yml"><img alt="Photo screening CI" src="https://github.com/alphaleporus/ToothAI/actions/workflows/photo-screening.yml/badge.svg"></a>
   <img alt="Licence: CC BY-NC 4.0" src="https://img.shields.io/badge/licence-CC_BY--NC_4.0-0E2236">
 </p>
 

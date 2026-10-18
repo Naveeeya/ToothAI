@@ -20,7 +20,7 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools -e --source winget --
 
 ### Step 1: Clone the Repository
 ```powershell
-git clone https://github.com/alphaleporus/tooth-ai.git
+git clone https://github.com/alphaleporus/ToothAI.git
 cd tooth-ai
 ```
 
