@@ -139,13 +139,7 @@ def assess_reliability(teeth, mode="Full chart", engine="v1"):
     skipped = [t for t in teeth if t.get("trace", {}).get("skipped")]
     moved = [t for t in teeth if t.get("trace", {}).get("reassigned_from")]
 
-    confidence = None
-    try:
-        from fdi_validator import FDIValidator
-        light = [{"fdi": t["fdi"], "box": list(t["box"]), "score": t["score"]} for t in teeth]
-        _, _, confidence = FDIValidator.validate_and_correct(light)
-    except Exception:  # validator is advisory; never block the result on it
-        pass
+    confidence = None   # spatial-consistency score (the legacy fdi_validator, now in workspace/; never deployed)
 
     if total < LOW_TOTAL:
         return Reliability(

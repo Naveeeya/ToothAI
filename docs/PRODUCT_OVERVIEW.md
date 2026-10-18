@@ -15,7 +15,7 @@ A collaboration between Bharati Vidyapeeth (Deemed to be University) College of 
 and Bharati Vidyapeeth Dental College and Hospital, Pune, under the C-CAMP Inter-Institutional
 Biomedical Innovations Programme (AICTE–C-CAMP IBIP).
 
-Brand and UX rules are in [`docs/BRAND_AND_UX_SPEC.md`](docs/BRAND_AND_UX_SPEC.md).
+Brand and UX rules are in [`docs/BRAND_AND_UX_SPEC.md`](BRAND_AND_UX_SPEC.md).
 
 ## What the app does
 
@@ -73,4 +73,4 @@ TOOTH_AI_DEMO=1 streamlit run app.py   # sample cases, no Detectron2 needed
 streamlit run app.py                   # full mode: torch + detectron2 + weights in output/
 ```
 
-The previous single-file app (branded "Dent-AI") is kept as `app_legacy.py` for comparison.
+The previous single-file app (branded "Dent-AI") is kept as `workspace/app_legacy.py` for comparison.

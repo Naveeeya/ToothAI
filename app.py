@@ -5,7 +5,7 @@
     TOOTH_AI_DEMO=1 streamlit run app.py # demo mode: bundled sample cases, no Detectron2
 
 Pages live in tooth_ai/views/, the pipeline in tooth_ai/pipeline.py. The previous
-single-file app is kept as app_legacy.py (and at git tag paper-eval-v1).
+single-file app is kept as workspace/app_legacy.py (and at git tag paper-eval-v1).
 """
 
 import streamlit as st

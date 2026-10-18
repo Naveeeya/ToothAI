@@ -22,7 +22,7 @@ prosthetic), a dental chart and a PDF report.
 | path | what |
 |---|---|
 | `app.py` | Streamlit entry point: page config, theme, `st.navigation` |
-| `app_legacy.py` | the old single-file "Dent-AI" app, kept for comparison; do not extend |
+| `workspace/app_legacy.py` | the old single-file "Dent-AI" app, kept for comparison; do not extend |
 | `tooth_ai/pipeline.py` | pure inference + geometric engine (no Streamlit import) |
 | `tooth_ai/analysis.py` | `analyze()` orchestration → `AnalysisResult`, reliability assessment |
 | `tooth_ai/render.py` | overlay drawing (layers, colour-by, geometry, selection) |
@@ -32,12 +32,13 @@ prosthetic), a dental chart and a PDF report.
 | `tooth_ai/evidence.py` | measured numbers, parsed from `paper_eval/results/` |
 | `assets/brand/`, `static/fonts/` | logo/marks/tokens (generated), self-hosted Plus Jakarta Sans + JetBrains Mono (OFL) |
 | `assets/samples/` | de-identified demo OPGs + cached detections |
-| `tools/` | `build_brand.py`, `make_demo_fixtures.py` |
+| `tools/` | `build_brand.py`, `make_demo_fixtures.py`, `report_media/` (report figures), `dataset/` (one-off dataset scripts) |
 | `tests/` | pytest: routing fix, regions, notation, engine parity vs paper_eval, reliability |
 | `tooth_ai/ui/` | theme tokens, CSS, reusable components |
 | `tooth_ai/views/` | pages: analyze, method, performance, about |
 | `paper_eval/` | evaluation harness and audit; source of every number we show |
-| `workspace/` | older phase work and a legacy proof-of-concept UI; not on the deployed path |
+| `workspace/` | older phase work, a legacy proof-of-concept UI and `legacy_root/` (old notes and scripts); not on the deployed path |
+| `docs/` | brand and UX spec, product overview, requirements, `setup/` (Mac and Windows set-up) |
 | `output/<run>/` | Detectron2 configs + `model_final.pth` (weights are git-ignored) |
 | `photo_screening/` | smartphone photo screening: FastAPI service, rules, PDF, UI page, notebooks, eval |
 | `docker/`, `deploy/` | app image (Detectron2), production compose + Caddy, Oracle VM setup and push scripts |
