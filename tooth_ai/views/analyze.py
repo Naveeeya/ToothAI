@@ -51,6 +51,8 @@ def _read_upload(data: bytes) -> np.ndarray:
 @st.cache_resource(show_spinner=False)
 def load_model(config_path, weights_path):
     """Detectron2 predictor (cached for the life of the server process)."""
+    import logging
+
     import torch
     from detectron2.config import get_cfg
     from detectron2.engine import DefaultPredictor
@@ -68,6 +70,7 @@ def load_model(config_path, weights_path):
     cfg.MODEL.WEIGHTS = str(weights_path)
     cfg.MODEL.DEVICE = device
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.05  # low; filtered downstream
+    logging.getLogger("tooth_ai").warning("loading model %s on %s", weights_path, device_name)
     return DefaultPredictor(cfg), device_name
 
 
@@ -84,6 +87,19 @@ def _predictors(mode):
     if "pathology_config" in cfg:
         pathology, _ = load_model(cfg["pathology_config"], cfg["pathology_weights"])
     return {"primary": primary, "pathology": pathology}, device
+
+
+def preload():
+    """Load every mode's models and run one bundled sample through them (called once at server start by
+    tooth_ai/serve.py), so the first upload doesn't wait for loading and the models stay resident."""
+    if demo_requested() or not detectron2_available():
+        return
+    image = cv2.imread(str(sample_image_path("sample_01")))
+    with _analysis_lock():
+        for mode in MODES:
+            if not _missing_weights(mode):
+                predictors, _ = _predictors(mode)
+                analyze(image, mode, predictors)
 
 
 # ------------------------------------------------------------------ helpers

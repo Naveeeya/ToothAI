@@ -45,4 +45,5 @@ RUN useradd --create-home app && mkdir -p /tmp/mpl && chown -R app /app /tmp/mpl
 USER app
 EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s CMD curl -fs http://localhost:8501/_stcore/health || exit 1
-CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
+# tooth_ai.serve = streamlit run app.py, with the OPG models loaded at start-up (see the module docstring)
+CMD ["python", "-m", "tooth_ai.serve", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
