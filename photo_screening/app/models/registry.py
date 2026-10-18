@@ -152,6 +152,12 @@ class Registry:
                 det.predict(blank)
             except Exception:
                 log.exception("warm-up failed", extra={"model_id": model_id})
+        # Ultralytics sets torch to cpu_count() - 1 threads when a CPU predictor is first set up: one thread
+        # on the 2-core server. Use every core (measured on the VM: AlphaDent 7.8 s -> 6.75 s per photo).
+        import os
+
+        import torch
+        torch.set_num_threads(os.cpu_count() or 1)
 
     def status_list(self) -> list[ModelStatus]:
         return [self.statuses[k] for k in SPECS if k in self.statuses]
