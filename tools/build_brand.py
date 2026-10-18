@@ -221,7 +221,7 @@ def subset_fonts() -> None:
         opts = subset.Options()
         opts.layout_features = ["kern", "liga"]
         opts.name_IDs = ["*"]
-        font = TTFont(FONTS / f"{name}.ttf")
+        font = TTFont(FONTS / f"{name}.ttf", recalcTimestamp=False)   # same bytes on every run
         s = subset.Subsetter(opts)
         s.populate(unicodes=WEB_SUBSET)
         s.subset(font)
