@@ -41,7 +41,7 @@ validation split, reported once on the same test images ([`paper_eval/results/en
 
 | Measure | Published (`v1`) | Improved (`v2`) | Paired difference |
 | --- | --- | --- | --- |
-| FDI, 117 canonical images | 61.6 % | 85.8 % | +24.2 pp [+18.6, +30.0] |
+| FDI, 117 canonical images | 61.6 % | 85.8 % | +24.2 pp [+18.6, +29.9] |
 | FDI, complete arches (67) | 76.6 % | 90.6 % | +14.0 pp [+7.7, +20.3] |
 | FDI, partial arches (50) | 35.4 % | 77.4 % | +42.0 pp [+33.5, +50.6] |
 | Tooth detection recall, full arches (93) | 94.3 % | 95.5 % | +1.2 pp [+0.7, +1.7] |
