@@ -3,6 +3,7 @@
 
     python tools/report_media/capture.py diagrams report_media
     python tools/report_media/capture.py app report_media        # needs the app (:8502) and photo API (:8001)
+    TOOTHAI_APP_URL=https://toothai.duckdns.org python tools/report_media/capture.py app report_media   # live site
 
 Screenshots use only bundled de-identified sample OPGs and the CC BY AKU sample photos.
 """
@@ -10,6 +11,7 @@ Screenshots use only bundled de-identified sample OPGs and the CC BY AKU sample 
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -17,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cdp import Browser  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-APP = "http://localhost:8502"
+APP = os.environ.get("TOOTHAI_APP_URL", "http://localhost:8502").rstrip("/")
 FIGURES = ["architecture", "opg-engine", "photo-pipeline", "deployment", "evaluation"]
 
 
@@ -34,10 +36,9 @@ async def diagrams(out: Path):
 async def app(out: Path):
     s = out / "01_screenshots"
     async with Browser(width=1440, height=900) as b:
-        # --- Analyse: the three bundled sample cases, improved engine
+        # --- Analyse: the three bundled sample cases, improved engine (the default)
         await b.goto(APP + "/", wait_text="Sample cases")
         await b.shot(s / "opg_00_landing.png", full=False)
-        await b.click("Improved (beta)")
         cases = [("Complete dentition", "opg_01_complete_dentition"),
                  ("Complete arches with restorations", "opg_02_restorations"),
                  ("Partial arches with restorations", "opg_03_partial_arches")]
@@ -52,7 +53,7 @@ async def app(out: Path):
         await b.click("Published")
         await b.idle(wait_text="Teeth")
         await b.shot(s / "opg_03_partial_arches_v1_top.png", full=False)
-        await b.click("Improved (beta)")
+        await b.click("Improved")
         # layers: colour by finding, geometry overlay
         for layer, name in (("Geometry", "opg_04_geometry_layer"),):
             try:
