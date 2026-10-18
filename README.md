@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <a href="https://144-24-113-240.sslip.io"><img alt="Live demo" src="https://img.shields.io/badge/live_demo-open_ToothAI-2D6FDB?style=for-the-badge"></a>
+  <a href="https://toothai.duckdns.org"><img alt="Live demo" src="https://img.shields.io/badge/live_demo-open_ToothAI-2D6FDB?style=for-the-badge"></a>
 </p>
 
 <p align="center">

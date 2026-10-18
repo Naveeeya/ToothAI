@@ -10,7 +10,10 @@ SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o IPQoS=none -o ServerA
 SSH=(ssh "${SSH_OPTS[@]}" "ubuntu@$IP")
 RSH="ssh $(printf '%q ' "${SSH_OPTS[@]}")"   # rsync -e is re-split by a shell: quote each option
 VERSION="$(git rev-parse --short HEAD)"
-SITE="${SITE_ADDRESS:-${IP//./-}.sslip.io}"
+# Public name (free DuckDNS subdomain pointing at the VM). The VM's sslip.io name redirects to it.
+SITE="${SITE_ADDRESS:-toothai.duckdns.org}"
+SSLIP="${IP//./-}.sslip.io"
+REDIRECT_FROM=""; [[ "$SITE" != "$SSLIP" ]] && REDIRECT_FROM="$SSLIP"
 cd "$(git rev-parse --show-toplevel)"
 
 # A deploy uploads ~1 GB the first time. On a metered network (phone hotspot, cellular: macOS marks it
@@ -30,7 +33,7 @@ fi
 
 echo "== build toothai-photo-api:$VERSION and toothai-ui:$VERSION (linux/arm64)"
 docker build --platform linux/arm64 -f photo_screening/Dockerfile -t "toothai-photo-api:$VERSION" .
-docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERSION" .
+docker build --platform linux/arm64 -f docker/ui.Dockerfile --build-arg SITE_URL="https://$SITE" -t "toothai-ui:$VERSION" .
 
 # rsync with --partial and retries: a dropped connection resumes instead of starting over.
 sync() {
@@ -60,8 +63,22 @@ echo "== save images, upload them in 20 MB pieces (each resumable), reassemble a
 TMP="${TOOTHAI_DEPLOY_TMP:-.deploy}"
 mkdir -p "$TMP/parts"
 TAR="$TMP/toothai-images.tar"
-docker save "toothai-photo-api:$VERSION" "toothai-ui:$VERSION" -o "$TAR.tmp" && mv "$TAR.tmp" "$TAR"
+# An image the VM already has (same image ID, e.g. photo-api when only the app changed) is retagged there
+# instead of uploaded.
+UPLOAD=()
+for image in toothai-photo-api toothai-ui; do
+  id="$(docker image inspect --format '{{.Id}}' "$image:$VERSION")"
+  if "${SSH[@]}" "docker image inspect $id >/dev/null 2>&1 && docker tag $id $image:$VERSION"; then
+    echo "   $image unchanged, already on the VM"
+  else
+    UPLOAD+=("$image:$VERSION")
+  fi
+done
+if (( ${#UPLOAD[@]} )); then
+docker save "${UPLOAD[@]}" -o "$TAR.tmp" && mv "$TAR.tmp" "$TAR"
+fi
 if [[ -n "${TOOTHAI_STOP_DOCKER:-}" ]]; then colima stop >/dev/null 2>&1 || true; fi   # free memory for the upload
+if (( ${#UPLOAD[@]} )); then
 rm -f "$TMP"/toothai-*.tar.gz "$TMP"/parts/part-*
 split -b 20m "$TAR" "$TMP/parts/part-"
 SUM="$(shasum -a 256 "$TAR" | awk '{print $1}')"
@@ -74,8 +91,9 @@ done
 "${SSH[@]}" "cd /opt/toothai/images && ls parts/part-* | sort | xargs cat > toothai-images.tar \
   && [ \"\$(sha256sum toothai-images.tar | cut -d' ' -f1)\" = $SUM ] && echo 'checksum ok' \
   && docker load -i toothai-images.tar && rm -rf parts toothai-images.tar"
+fi
 echo "== start $VERSION at https://$SITE"
 scp "${SSH_OPTS[@]}" deploy/compose.yml deploy/Caddyfile "ubuntu@$IP:/opt/toothai/"
-"${SSH[@]}" "cd /opt/toothai && printf 'TOOTHAI_VERSION=%s\nSITE_ADDRESS=%s\n' '$VERSION' '$SITE' > .env \
+"${SSH[@]}" "cd /opt/toothai && printf 'TOOTHAI_VERSION=%s\nSITE_ADDRESS=%s\nREDIRECT_FROM=%s\n' '$VERSION' '$SITE' '$REDIRECT_FROM' > .env \
   && docker compose -f compose.yml up -d --remove-orphans && docker image prune -af >/dev/null && docker compose ps"
 echo "live: https://$SITE"

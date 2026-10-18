@@ -1,6 +1,10 @@
-# HTTPS in front of the Streamlit app. SITE_ADDRESS is e.g. 129-154-1-2.sslip.io (free DNS for the VM's IP);
-# Caddy obtains and renews the Let's Encrypt certificate itself. WebSockets are proxied automatically.
-{$SITE_ADDRESS} {
+# HTTPS in front of the Streamlit app. SITE_ADDRESS is the public name (toothai.duckdns.org, free DNS);
+# REDIRECT_FROM (optional) is another name for the same VM, e.g. its <ip-with-dashes>.sslip.io address, which
+# is sent to SITE_ADDRESS so old links keep working. Caddy obtains and renews a Let's Encrypt certificate for
+# each name itself. WebSockets are proxied automatically.
+{$SITE_ADDRESS} {$REDIRECT_FROM} {
+	@other_name not host {$SITE_ADDRESS}
+	redir @other_name https://{$SITE_ADDRESS}{uri} permanent
 	encode zstd gzip
 	request_body {
 		max_size 20MB

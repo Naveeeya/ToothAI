@@ -74,10 +74,13 @@ deploy/push.sh <public-ip>               # every update after that
 
 It refuses to run with uncommitted app changes, so the deployed version always matches a git commit, and
 on a metered network (a phone hotspot or cellular link, which macOS marks "expensive"), because the first
-deploy uploads about 1 GB of images (later deploys send only what changed). Set `TOOTHAI_ALLOW_METERED=1` to
-override. The
-site comes up at `https://<ip-with-dashes>.sslip.io` (free DNS for the IP; Caddy gets the certificate).
-To use your own domain, point it at the IP and run `SITE_ADDRESS=your.domain deploy/push.sh <ip>`.
+deploy uploads about 1 GB of images (later deploys skip an image the VM already has, e.g. the photo service
+when only the app changed). Set `TOOTHAI_ALLOW_METERED=1` to override.
+
+The site is `https://toothai.duckdns.org`, a free DuckDNS subdomain (duckdns.org, signed in with GitHub) whose
+address is set to the VM's IP; the IP is fixed, so nothing on the VM updates it. Caddy gets and renews the
+Let's Encrypt certificate, and the VM's `https://<ip-with-dashes>.sslip.io` name redirects to it. For another
+name, point its DNS at the IP and run `SITE_ADDRESS=your.domain deploy/push.sh <ip>`.
 
 ## 5. Operate
 
