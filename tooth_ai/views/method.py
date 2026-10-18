@@ -8,10 +8,10 @@ from tooth_ai.ui import theme
 
 STAGES = [
     ("Radiograph", "Panoramic X-ray (OPG)", "input"),
-    ("Contrast pass", "Original + CLAHE copy, fused", "learn"),
     ("Instance segmentation", "Mask R-CNN: every tooth and finding", "learn"),
-    ("Geometric engine", "Jaw split, arch order, gap-aware FDI", "geo"),
-    ("Anatomical rules", "One tooth per number, ≤ 32 teeth, metal flare", "geo"),
+    ("Clean-up", "Duplicates removed, ≤ 32 teeth kept", "geo"),
+    ("Geometric engine", "Bite line, midline, FDI by position", "geo"),
+    ("Anatomical rules", "One tooth per number, metal flare", "geo"),
     ("Chart and report", "Findings mapped to teeth", "out"),
 ]
 
@@ -45,9 +45,9 @@ def _diagram():
                          f'stroke="{theme.INK_500}" stroke-width="1.4" marker-end="url(#ar)"/>')
         x += box_w + gap
     # group labels
-    lx = 4 + box_w + gap
+    lx = 4 + (box_w + gap)
     parts.append(f'<text x="{lx}" y="22" font-size="11" fill="{theme.INK_500}" font-family="JetBrains Mono, ui-monospace, monospace">DEEP LEARNING</text>')
-    gx = 4 + 3 * (box_w + gap)
+    gx = 4 + 2 * (box_w + gap)
     parts.append(f'<text x="{gx}" y="22" font-size="11" fill="{theme.SPARK}" font-family="JetBrains Mono, ui-monospace, monospace">GEOMETRIC REASONING</text>')
     parts.append(f'<text x="{gx}" y="134" font-size="11" fill="{theme.INK_500}">No learned numbering: every number '
                  f'can be explained.</text>')
@@ -65,19 +65,20 @@ def render():
         st.markdown(
             "A Mask R-CNN network (ResNet-50 backbone) segments every tooth as one generic class, plus eight "
             "kinds of finding: caries, crowns, fillings, implants, metal posts, retained roots, and root canal "
-            "fillings and obturations. It runs twice, on the original image and on a contrast-enhanced copy "
-            "(CLAHE), and the two sets of detections are fused. A second model contributes findings in Full "
-            "chart mode.")
+            "fillings and obturations. It runs once on the radiograph. A second model contributes findings "
+            "in Full chart mode.")
         st.subheader("Geometry numbers them")
         st.markdown(
-            "1. **Clean up.** Overlapping detections are suppressed with distance-aware NMS, which handles "
-            "tightly packed molars.\n"
-            "2. **Split the jaws** at the median height of the tooth centres.\n"
-            "3. **Order each jaw** from the patient's right to left along the arch.\n"
-            "4. **Assign FDI numbers** in that order, starting at 18 / 48. A gap wider than 1.6× a tooth's "
-            "width skips numbers for the missing teeth.\n"
-            "5. **Apply anatomical rules.** No number is used twice, a mouth has at most 32 teeth, and caries "
-            "beside metal restorations is down-weighted because metal causes flare.\n"
+            "1. **Clean up.** Overlapping detections are suppressed with distance-aware NMS, and a box lying "
+            "inside another tooth's mask is dropped. At most 32 teeth (16 per jaw) are kept, by score, "
+            "before numbering; after that no detected tooth is deleted.\n"
+            "2. **Split the jaws** along a bite line fitted through the gap between upper and lower teeth.\n"
+            "3. **Find the midline** from the symmetry of tooth widths on either side.\n"
+            "4. **Number by position.** On each side of the midline, teeth are matched in order to an arch "
+            "layout learned from the training images, so a missing tooth leaves its position empty instead "
+            "of shifting the rest.\n"
+            "5. **Apply anatomical rules.** No number is used twice, and caries beside metal restorations is "
+            "down-weighted because metal causes flare.\n"
             "6. **Map findings** to the tooth they overlap.")
     with b:
         st.subheader("Why geometry, not a numbering network")
@@ -89,21 +90,22 @@ def render():
             "numbers more teeth correctly.")
         st.subheader("Why it can explain itself")
         st.markdown(
-            "Every number comes from a short chain of rules: jaw, position in the arch, gaps. On the Analyse "
+            "Every number comes from a short chain of rules: jaw, side of the midline, position. On the Analyse "
             "page, select a tooth to read that chain under **Why this number?**, or turn on the **Geometry** "
             "layer to see the jaw split line, the midline and the fitted arch curves.")
         st.subheader("Where it fails")
         st.markdown(
-            "Counting along the arch means one missing or undetected tooth shifts every number after it in "
-            "that jaw. ToothAI flags partial arches on every case so the dentist knows where to look. See "
-            "**Performance** for the measured effect.")
-        st.subheader("The improved engine (beta)")
+            "Partial arches are still the hard case. A missing or undetected tooth can move a neighbour's "
+            "number, and the midline is less certain when one side has lost several teeth. ToothAI flags "
+            "partial arches on every case so the dentist knows where to look. See **Performance** for the "
+            "measured effect.")
+        st.subheader("The published engine")
         st.markdown(
-            "Choose **Numbering → Improved** on the Analyse page. It runs one pass, removes duplicate boxes, "
-            "keeps at most 32 teeth before numbering and never drops a detected one, splits the jaws along a "
-            "fitted bite line, finds the dental midline from the symmetry of tooth widths and numbers each "
-            "tooth by **where it sits**: its distance from the midline, matched in order to an arch layout "
-            "learned from the training images. A missing tooth then leaves its slot empty instead of shifting "
-            "the rest. It was designed on the validation split and is compared with the published engine on "
+            "Choose **Numbering → Published** on the Analyse page to compare with the engine measured in the "
+            "paper. It runs the network twice (the original image and a contrast-enhanced CLAHE copy, fused), "
+            "splits the jaws at the median height of the tooth centres and numbers each jaw in order from "
+            "18 / 48, skipping numbers where a gap is wider than 1.6× a tooth's width. Counting along the arch "
+            "means one missing tooth shifts every number after it, which is what the improved engine fixes. "
+            "The improved engine was designed on the validation split only; both are compared on "
             "**Performance**.")
     ui.footer()

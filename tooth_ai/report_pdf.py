@@ -259,7 +259,7 @@ def _limitations_text(result, ev):
         return (f"Measured on held-out panoramic radiographs with the improved engine: tooth detection recall "
                 f"{pct(v2['recall'])}; FDI numbering {pct(v2['complete'])} accurate on complete arches and "
                 f"{pct(v2['partial'])} on partial arches, where a missing or undetected tooth can still shift a "
-                "number. The improved engine is a beta, not the published configuration." + tail)
+                "number. The published paper reports the earlier engine (v1), which remains selectable in the app." + tail)
     return (f"Measured on 716 held-out panoramic radiographs in the configuration this report "
             f"uses: tooth detection recall {pct(ev['recall'])} and jaw assignment {pct(ev['jaw'])}. "
             f"FDI numbering was {pct(ev['complete'])} accurate on complete arches but "

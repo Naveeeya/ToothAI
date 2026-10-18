@@ -1,6 +1,6 @@
 """Engine v2: the geometric half of the pipeline with the flaws measured in paper_eval fixed.
 
-Not the deployed default (``tooth_ai.evidence.DEPLOYED`` still names the v1 configuration). Every change is
+The app's default numbering engine (v1 stays selectable; ``tooth_ai.evidence.DEPLOYED`` names v1). Every change is
 measured by ``paper_eval/engine_lab.py`` on the validation split (design) and the test split (report):
 
 1. Cleanup before numbering. v1 numbered every box, then pruned to 32 by raising a score floor in 0.02

@@ -16,11 +16,11 @@ from pathlib import Path
 
 RESULTS = Path(__file__).resolve().parents[1] / "paper_eval" / "results"
 
-DEPLOYED = "full_fix_routing"
+DEPLOYED = "full_fix_routing"   # the published engine (v1) as it ran in the app; the app default is now engine v2
 BEST = "single_pass"
 NETWORK = "network_numbering_t005"
 CONFIG_LABELS = {
-    DEPLOYED: "As deployed (two passes)",
+    DEPLOYED: "Published engine (two passes)",
     BEST: "Single pass",
     NETWORK: "Network numbers teeth directly",
 }

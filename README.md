@@ -56,7 +56,8 @@ Innovations Programme (AICTE–C-CAMP IBIP).
 Every number names the configuration it comes from. Nothing here is estimated.
 
 **OPG analysis** (716 held-out radiographs, no train overlap, Tesla T4, bootstrap 95 % CIs;
-[`paper_eval/`](paper_eval/README.md)). As deployed (`full_fix_routing`: original + CLAHE passes, routing fix):
+[`paper_eval/`](paper_eval/README.md)). Published engine (`v1`, `full_fix_routing`: original + CLAHE passes, routing
+fix; the configuration in the paper):
 
 | Measure | Value |
 | --- | --- |
@@ -68,7 +69,7 @@ The partial-arch collapse is the headline limitation of the published engine: on
 later number in that jaw. A single pass with the routing fix (`single_pass_fix_routing`, evaluation only)
 measured FDI 64.5 % [58.7, 70.1], +2.88 pp [+0.09, +5.90] paired.
 
-**Improved numbering engine (`v2`, opt-in on the Analyse page; `tooth_ai/engine_v2.py`).** Designed on the
+**Improved numbering engine (`v2`, the app's default; `tooth_ai/engine_v2.py`).** Designed on the
 validation split, reported once on the same test images ([`paper_eval/results/engine_v2.csv`](paper_eval/results/engine_v2.csv)):
 
 | Measure | Published (`v1`) | Improved (`v2`) | Paired difference |
@@ -80,7 +81,8 @@ validation split, reported once on the same test images ([`paper_eval/results/en
 
 v2 runs one pass, removes duplicate boxes, splits the jaws along a fitted bite line, caps to 32 teeth before
 numbering (never deleting a detected one) and numbers each tooth by its position along the arch, using a
-template learned on the training split. The published engine stays the default until the paper reports v2.
+template learned on the training split. The Analyse page uses v2 by default; the published engine stays
+selectable under Numbering for comparison.
 Finding (caries, restoration) accuracy on OPGs has not been validated.
 
 **Photo screening** (AKU official test split, 628 smartphone photos;

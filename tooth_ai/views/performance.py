@@ -52,38 +52,62 @@ def render():
                    "and a 95% confidence interval.", badge="paper_eval")
 
     s = ev.deployed_summary()
-    rec, rec_ci, n = ev.metric(ev.DEPLOYED, ev.SUBSET_ALL, "detection_recall")
-    jaw, jaw_ci, _ = ev.metric(ev.DEPLOYED, ev.SUBSET_ALL, "jaw_acc_given_detected")
-    full, full_ci, n_full = ev.metric(ev.DEPLOYED, ev.SUBSET_COMPLETE, "fdi_acc_joint")
-    part, part_ci, n_part = ev.metric(ev.DEPLOYED, ev.SUBSET_PARTIAL, "fdi_acc_joint")
     ap = ev.coco_ap()
+    v2 = ev.engine_v2()
+    new = v2.get("v2")
 
-    st.html('<div class="ta-eyebrow">As deployed in this app (two passes)</div>')
-    c = st.columns(4)
-    with c[0]:
-        _stat(pct(rec), rec_ci, "Tooth detection recall", f"{n} test images")
-    with c[1]:
-        _stat(pct(jaw), jaw_ci, "Correct jaw, given detected", f"{n} test images")
-    with c[2]:
-        _stat(pct(full), full_ci, "FDI number correct · complete arches", f"{n_full} images")
-    with c[3]:
-        _stat(pct(part), part_ci, "FDI number correct · partial arches", f"{n_part} images")
+    def ci(r, key):
+        return (r[key + "_lo"], r[key + "_hi"])
+
+    if new:
+        st.html('<div class="ta-eyebrow">As deployed in this app (improved engine, one pass)</div>')
+        c = st.columns(4)
+        with c[0]:
+            _stat(pct(new["recall"]), ci(new, "recall"), "Tooth detection recall · full arches",
+                  f"{new['recall_n_images']:.0f} test images")
+        with c[1]:
+            _stat(pct(new["fdi"]), ci(new, "fdi"), "FDI number correct · all", f"{new['fdi_n_images']:.0f} images")
+        with c[2]:
+            _stat(pct(new["complete"]), ci(new, "complete"), "FDI number correct · complete arches",
+                  f"{new['complete_n_images']:.0f} images")
+        with c[3]:
+            _stat(pct(new["partial"]), ci(new, "partial"), "FDI number correct · partial arches",
+                  f"{new['partial_n_images']:.0f} images")
+    else:   # engine_v2.csv absent: the published engine's numbers
+        rec, rec_ci, n = ev.metric(ev.DEPLOYED, ev.SUBSET_ALL, "detection_recall")
+        jaw, jaw_ci, _ = ev.metric(ev.DEPLOYED, ev.SUBSET_ALL, "jaw_acc_given_detected")
+        full, full_ci, n_full = ev.metric(ev.DEPLOYED, ev.SUBSET_COMPLETE, "fdi_acc_joint")
+        part, part_ci, n_part = ev.metric(ev.DEPLOYED, ev.SUBSET_PARTIAL, "fdi_acc_joint")
+        st.html('<div class="ta-eyebrow">Published engine (two passes)</div>')
+        c = st.columns(4)
+        with c[0]:
+            _stat(pct(rec), rec_ci, "Tooth detection recall", f"{n} test images")
+        with c[1]:
+            _stat(pct(jaw), jaw_ci, "Correct jaw, given detected", f"{n} test images")
+        with c[2]:
+            _stat(pct(full), full_ci, "FDI number correct · complete arches", f"{n_full} images")
+        with c[3]:
+            _stat(pct(part), part_ci, "FDI number correct · partial arches", f"{n_part} images")
 
     st.markdown("")
     left, right = st.columns([3, 2], gap="large")
     with left:
         st.subheader("Numbering depends on arch completeness")
         rows = []
+        if new:
+            for key, name, col in (("complete", "Complete arches", COMPLETE), ("partial", "Partial arches", PARTIAL)):
+                rows.append(("Improved engine (default)", name, new[key], *ci(new, key), col))
         for cfg in (ev.DEPLOYED, ev.BEST):
             for subset, name, col in ((ev.SUBSET_COMPLETE, "Complete arches", COMPLETE),
                                       (ev.SUBSET_PARTIAL, "Partial arches", PARTIAL)):
                 v, (lo, hi), _ = ev.metric(cfg, subset, "fdi_acc_joint")
                 if v is not None:
                     rows.append((ev.CONFIG_LABELS[cfg], name, v, lo, hi, col))
-        st.plotly_chart(_bars(rows, 250), config={"displayModeBar": False}, key="perf_arch")
+        st.plotly_chart(_bars(rows, 330), config={"displayModeBar": False}, key="perf_arch")
         st.caption("End-to-end FDI accuracy: a tooth counts only if it is detected and numbered correctly. "
-                   "Numbers are assigned in order along each jaw, so one missing tooth shifts every number "
-                   "after it. That is why ToothAI flags partial arches on every case.")
+                   "The published engine numbers teeth in order along each jaw, so one missing tooth shifts "
+                   "every number after it; the improved engine numbers by position from the midline, which "
+                   "holds up far better on partial arches. ToothAI flags partial arches on every case.")
     with right:
         st.subheader("Geometry vs a numbering network")
         d, lo, hi, n_pair = ev.geometry_vs_network()
@@ -98,21 +122,21 @@ def render():
                    f"itself: **{d:+.1f} pp** (paired 95% CI {lo:+.1f} to {hi:+.1f}, n = {n_pair}). Most of "
                    "the gap comes from detection: the generic tooth detector finds more teeth.")
 
-    v2 = ev.engine_v2()
     if "v1" in v2 and "v2" in v2:
-        st.subheader("Improved numbering engine (beta)")
+        st.subheader("Improved vs published engine")
         a, b = v2["v1"], v2["v2"]
         rows = []
         for key, label in (("recall", "Tooth detection recall (full arches)"), ("fdi", "FDI accuracy, all canonical"),
                            ("complete", "FDI accuracy, complete arches"), ("partial", "FDI accuracy, partial arches")):
             rows.append({"Measure": label,
                          "Published engine": f"{pct(a[key])} [{pct(a[key + '_lo'])}, {pct(a[key + '_hi'])}]",
-                         "Improved (beta)": f"{pct(b[key])} [{pct(b[key + '_lo'])}, {pct(b[key + '_hi'])}]"})
+                         "Improved (default)": f"{pct(b[key])} [{pct(b[key + '_lo'])}, {pct(b[key + '_hi'])}]"})
         st.dataframe(pd.DataFrame(rows), hide_index=True)
-        st.caption("Same test images and matching as above; the improved engine was designed on the validation "
-                   "split only. It runs one pass, removes duplicate boxes, splits the jaws along a fitted bite "
-                   "line, numbers outward from the midline and never drops a detected tooth. Choose it under "
-                   "Numbering on the Analyse page. Source: `paper_eval/results/engine_v2.csv`.")
+        st.caption("Same test images, paired by image; the improved engine was designed on the validation split "
+                   "only. It runs one pass, removes duplicate boxes, splits the jaws along a fitted bite line, "
+                   "numbers by position from the midline and never drops a detected tooth. The Analyse page "
+                   "uses it by default; the published engine is still available under Numbering. "
+                   "Source: `paper_eval/results/engine_v2.csv`.")
 
     st.subheader("Detection and segmentation")
     st.dataframe(pd.DataFrame([
@@ -135,9 +159,12 @@ def render():
             "- Source: `paper_eval/` (harness, audit and raw CSVs).")
     with st.expander("Known limitations", icon=":material/report:", expanded=True):
         st.markdown(
-            f"- **Partial arches.** FDI accuracy drops from {pct(s['complete'])} to {pct(s['partial'])} "
-            "when teeth are missing. Review the flagged jaw.\n"
-            "- **Findings are not validated.** Caries, restoration and endodontic detections have no "
+            (f"- **Partial arches.** With the improved engine, FDI accuracy is {pct(new['complete'])} on complete "
+             f"arches and {pct(new['partial'])} on partial ones (published engine: {pct(s['complete'])} and "
+             f"{pct(s['partial'])}). Review the flagged jaw.\n" if new else
+             f"- **Partial arches.** FDI accuracy drops from {pct(s['complete'])} to {pct(s['partial'])} "
+             "when teeth are missing. Review the flagged jaw.\n")
+            + "- **Findings are not validated.** Caries, restoration and endodontic detections have no "
             "measured accuracy yet; treat them as prompts for review.\n"
             "- **Adult permanent dentition only.** Primary and mixed dentition, supernumerary teeth and "
             "implants that replace teeth are not numbered correctly.\n"

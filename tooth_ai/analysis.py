@@ -170,8 +170,10 @@ def assess_reliability(teeth, mode="Full chart", engine="v1"):
         reasons.append(f"Spatial consistency {confidence:.0%}")
 
     if not reasons:
-        measured = (f"On complete arches numbering measured {pct(evidence.deployed_summary()['complete'], 0)} "
-                    "FDI accuracy." if engine == "v1" else "See the Performance page for measured accuracy.")
+        complete = (evidence.deployed_summary()["complete"] if engine == "v1"
+                    else evidence.engine_v2().get("v2", {}).get("complete"))
+        measured = (f"On complete arches this engine measured {pct(complete, 0)} FDI accuracy." if complete
+                    else "See the Performance page for measured accuracy.")
         return Reliability(
             "ok", "Complete arches: numbering reliable",
             "Both jaws are close to complete, with no gaps or conflicts. " + measured,

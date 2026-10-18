@@ -42,7 +42,10 @@ prosthetic), a dental chart and a PDF report.
 | `photo_screening/` | smartphone photo screening: FastAPI service, rules, PDF, UI page, notebooks, eval |
 | `docker/`, `deploy/` | app image (Detectron2), production compose + Caddy, Oracle VM setup and push scripts |
 
-## Deployed pipeline
+## Published pipeline (v1, Numbering → Published)
+
+The app's default is engine v2 (`tooth_ai/engine_v2.py`): one pass, then its own clean-up, bite-line jaw
+split, symmetry midline and template numbering in place of steps 1 and 4 below.
 
 1. Two passes: original + CLAHE (clip 2.5, 8×8), fused by weighted box fusion at IoU 0.55.
    Gamma and flip passes exist in code but are **not** called.
@@ -67,7 +70,7 @@ bootstrap 95 % CIs; see `paper_eval/AUDIT.md`, `paper_eval/results/*.csv`). **Al
 configuration a number comes from.** In code, read them through `tooth_ai/evidence.py` (it parses
 the CSVs) instead of hard-coding.
 
-As deployed (`full_fix_routing`, two passes + routing fix; this is what the app runs):
+Published engine v1 (`full_fix_routing`, two passes + routing fix; `evidence.DEPLOYED`, the paper's configuration):
 - Tooth detection recall **94.9 % [94.0, 95.8]** (n = 117); jaw given detected **97.9 %**.
 - FDI end-to-end **61.6 %**: complete arches **76.6 % [70.7, 82.2]** (n = 67), partial arches
   **35.4 % [27.7, 42.8]** (n = 50). The partial-arch collapse is the headline limitation: one
@@ -80,10 +83,10 @@ partial 35.6 %. Single pass beats two passes (+3.65 pp FDI, paired): a candidate
   paired (64.5 % vs 46.3 %); most of the gap is detection, not numbering.
 - AP-Tooth (segm) **72.5**. Latency: 0.23 s/image single pass, 0.57–0.61 s two-pass (T4).
 
-Engine v2 (`tooth_ai/engine_v2.py`, opt-in; `paper_eval/results/engine_v2.csv`, designed on the validation
+Engine v2 (`tooth_ai/engine_v2.py`, the app default since 18 Oct 2026; `paper_eval/results/engine_v2.csv`, designed on the validation
 split, `paper_eval/engine_lab.py` on cached outputs): FDI **85.8 %** (complete 90.6 %, partial **77.4 %**),
-recall **95.5 %**; paired vs v1 FDI **+24.2 pp [+18.6, +29.9]**. v1 remains `DEPLOYED` and the app default
-until the paper is updated; `TOOTH_AI_ENGINE=v2` switches a deployment's default.
+recall **95.5 %**; paired vs v1 FDI **+24.2 pp [+18.6, +29.9]**. v1 stays selectable and is still
+`evidence.DEPLOYED` (the paper reports it); `TOOTH_AI_ENGINE=v1` makes it a deployment's default again.
 
 **Never show or write:** 87 % / 85–90 % FDI, 0.78 mask IoU, 92 % quadrant accuracy,
 "< 500 ms", "4-pass Smart Ensemble", "EfficientNet refinement", "6 production models",
