@@ -1,8 +1,29 @@
-# ToothAI
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/brand/tooth-ai-lockup-horizontal-reversed.svg">
+    <img src="assets/brand/tooth-ai-lockup-horizontal.svg" alt="ToothAI" width="300">
+  </picture>
+</h1>
 
-**Integrated deep learning and geometric reasoning for detection, segmentation, numbering and anatomical
-mapping of teeth in panoramic dental radiographs**, plus a smartphone photo screening aid that tells people
-when an X-ray is worth getting.
+<p align="center">
+  <b>Integrated deep learning and geometric reasoning for detection, segmentation, numbering and anatomical
+  mapping of teeth in panoramic dental radiographs</b>, plus a smartphone photo screening aid that tells people
+  when an X-ray is worth getting.
+</p>
+
+<p align="center">
+  <a href="https://144-24-113-240.sslip.io"><img alt="Live demo" src="https://img.shields.io/badge/live_demo-open_ToothAI-2D6FDB?style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/alphaleporus/tooth-ai/actions/workflows/ci.yml"><img alt="ToothAI app CI" src="https://github.com/alphaleporus/tooth-ai/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/alphaleporus/tooth-ai/actions/workflows/photo-screening.yml"><img alt="Photo screening CI" src="https://github.com/alphaleporus/tooth-ai/actions/workflows/photo-screening.yml/badge.svg"></a>
+  <img alt="Licence: CC BY-NC 4.0" src="https://img.shields.io/badge/licence-CC_BY--NC_4.0-0E2236">
+</p>
+
+<p align="center">
+  <img src="docs/images/analyse.jpg" alt="The Analyse page: tooth masks and FDI numbers on a panoramic radiograph, the dental chart and the reliability panel" width="900">
+</p>
 
 > **Research prototype. Not a medical device and not for diagnostic use. All findings require review by a
 > qualified dentist.**
@@ -11,6 +32,13 @@ A collaboration between Bharati Vidyapeeth (Deemed to be University) College of 
 Vidyapeeth Dental College & Hospital, Pune, developed under the C-CAMP Inter-Institutional Biomedical
 Innovations Programme (AICTE–C-CAMP IBIP).
 
+<p align="center">
+  <img src="assets/logo_aicte.png" alt="AICTE" height="48">&nbsp;&nbsp;
+  <img src="assets/logo_bvu.png" alt="Bharati Vidyapeeth" height="48">&nbsp;&nbsp;
+  <img src="assets/logo_ccamp.png" alt="C-CAMP" height="48">&nbsp;&nbsp;
+  <img src="assets/logo_cibip.png" alt="C-CAMP IBIP" height="48">
+</p>
+
 ## What it does
 
 | Page | Input | Output |
@@ -18,6 +46,10 @@ Innovations Programme (AICTE–C-CAMP IBIP).
 | **Analyse** | A panoramic radiograph (OPG) | Per-tooth masks, FDI numbers, findings mapped to teeth (caries, restorations, endodontic, prosthetic), a dental chart, PDF / Markdown / JSON reports |
 | **Photo screening** | Up to five phone photos of the mouth | Possible decay, wear and restorations marked on each photo, a triage level ("routine", "book a check-up soon", "see a dentist promptly"), a screening index and a PDF. It is a screening aid, not a diagnosis, and recommends an OPG when something is seen |
 | **How it works**, **Performance**, **About** | | The method, the measured numbers (read live from `paper_eval/results`), credits and licences |
+
+<p align="center">
+  <img src="docs/images/photo_screening.jpg" alt="Photo screening: advice, screening index and findings for a set of intraoral phone photos" width="900">
+</p>
 
 ## Measured performance
 

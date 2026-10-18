@@ -7,6 +7,7 @@
 !tooth_ai/
 !assets/
 !static/
+!docker/brand_shell.py
 !photo_screening/
 !paper_eval/results/coco_eval_716.csv
 !paper_eval/results/decomposition.csv

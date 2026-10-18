@@ -40,6 +40,10 @@ COPY paper_eval/results/coco_eval_716.csv paper_eval/results/decomposition.csv \
 COPY photo_screening/__init__.py photo_screening/palette.py photo_screening/
 COPY photo_screening/ui/ photo_screening/ui/
 COPY photo_screening/samples/ photo_screening/samples/
+# Brand Streamlit's HTML shell (tab title, favicon, link previews); SITE_URL makes the preview image absolute.
+COPY docker/brand_shell.py docker/brand_shell.py
+ARG SITE_URL=http://localhost:8501
+RUN python docker/brand_shell.py "$SITE_URL"
 
 RUN useradd --create-home app && mkdir -p /tmp/mpl && chown -R app /app /tmp/mpl
 USER app

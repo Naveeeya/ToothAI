@@ -106,3 +106,7 @@ paper_eval/.cache/
 
 # presentation media built by tools/report_media (screenshots, PDFs)
 /report_media/
+
+# copied from assets/brand by docker/brand_shell.py at image build time
+/static/og.png
+/static/icon-192.png
