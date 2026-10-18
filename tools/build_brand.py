@@ -144,18 +144,16 @@ def favicon(px=48, uid="f"):
 
 
 def og_card():
+    """Link-preview card: the lockup alone, centred on navy (no tagline: previews are small)."""
     w, h = 1200, 630
-    size = 104
+    size = 120
     m, gap = 1.4 * size, 0.3 * size
     lo, hi = WORD.ink_bounds("ToothAI", size, TRACK)
     block = m + gap + hi - lo
-    bx, by = (w - block) / 2, 200
-    tag = "AI that reads dental radiographs, so clinicians catch more and miss less."  # guidelines tagline
-    tw = TEXT.width(tag, 32)
+    bx, by = (w - block) / 2, (h - m) / 2
     body = (f'<rect width="{w}" height="{h}" fill="{NAVY}"/>'
             + mark(WHITE, SPARK_LIGHT, "og", bx, by, m)
-            + wordmark(size, bx + m + gap - lo, by + m / 2 + WORD.cap * size / 2, WHITE, SPARK_LIGHT)
-            + TEXT.paths(tag, 32, (w - tw) / 2, 470, ["#C9D4E0"] * len(tag)))
+            + wordmark(size, bx + m + gap - lo, by + m / 2 + WORD.cap * size / 2, WHITE, SPARK_LIGHT))
     return svg(body, w, h)
 
 
