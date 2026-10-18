@@ -36,7 +36,7 @@ docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERS
 sync() {
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    rsync -a --chmod=D755,F644 --partial --timeout=120 --exclude '._*' -e "$RSH" "$@" && return 0
+    rsync -a --partial --timeout=120 --exclude '._*' -e "$RSH" "$@" && return 0
     echo "   transfer interrupted, retrying ($i)"; sleep 10
   done
   return 1
@@ -49,6 +49,9 @@ if [[ "${2:-}" == "--weights" ]]; then
     sync "output/$run/config.yaml" "output/$run/model_final.pth" "ubuntu@$IP:/opt/toothai/output/$run/"
   done
   sync --exclude '*.onnx' photo_screening/weights/ "ubuntu@$IP:/opt/toothai/weights/photo/"
+  # Files from the exFAT drive arrive as mode 700; the containers' non-root user needs to read them.
+  # (macOS ships openrsync, which has no --chmod.)
+  "${SSH[@]}" "chmod -R a+rX /opt/toothai/weights /opt/toothai/output"
 fi
 
 echo "== save images, upload them in 20 MB pieces (each resumable), reassemble and verify on the VM"
