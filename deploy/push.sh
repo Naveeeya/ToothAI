@@ -8,6 +8,7 @@ KEY="${TOOTHAI_SSH_KEY:-$HOME/.ssh/toothai_oracle}"
 # IPQoS=none: macOS ssh otherwise marks packets in a way some home routers choke on ("Result too large").
 SSH_OPTS=(-i "$KEY" -o StrictHostKeyChecking=accept-new -o IPQoS=none -o ServerAliveInterval=15)
 SSH=(ssh "${SSH_OPTS[@]}" "ubuntu@$IP")
+RSH="ssh $(printf '%q ' "${SSH_OPTS[@]}")"   # rsync -e is re-split by a shell: quote each option
 VERSION="$(git rev-parse --short HEAD)"
 SITE="${SITE_ADDRESS:-${IP//./-}.sslip.io}"
 cd "$(git rev-parse --show-toplevel)"
@@ -35,7 +36,7 @@ docker build --platform linux/arm64 -f docker/ui.Dockerfile -t "toothai-ui:$VERS
 sync() {
   local i
   for i in 1 2 3 4 5 6 7 8 9 10; do
-    rsync -a --chmod=D755,F644 --partial --timeout=120 --exclude '._*' -e "ssh ${SSH_OPTS[*]}" "$@" && return 0
+    rsync -a --chmod=D755,F644 --partial --timeout=120 --exclude '._*' -e "$RSH" "$@" && return 0
     echo "   transfer interrupted, retrying ($i)"; sleep 10
   done
   return 1
